@@ -7,25 +7,27 @@ import (
 	"music-efx/internal/player"
 	metaModel "music-efx/pkg/model"
 	"os"
-	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type model struct {
 	items         []metaModel.MP3Metadata
-	selectedIndex int        // Track the currently selected file
-	isPlaying     bool       // Flag to track if playback is ongoing
-	currentFile   string     // Store the currently playing file name
-	startIndex    int        // To track the pagination (first item to show)
-	playerMutex   sync.Mutex // Mutex to synchronize playback
+	selectedIndex int           // Track the currently selected file
+	isPlaying     bool          // Flag to track if playback is ongoing
+	currentTrack  *player.Track // Store the currently playing track
+	currentFile   string        // Store the currently playing file name
+	startIndex    int           // To track the pagination (first item to show)
+	player        *player.Player
 }
 
-func (m *model) Init() tea.Cmd { // Changed receiver to *model
+func (m *model) Init() tea.Cmd {
+	// Initialize the player
+	m.player = &player.Player{}
 	return nil
 }
 
-func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { // Changed receiver to *model
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		// Handle keyboard inputs
@@ -49,26 +51,30 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { // Changed receiver t
 		case "enter":
 			// Select the current file to play
 			selectedFile := m.items[m.selectedIndex]
+
+			// Stop current playback if already playing
 			if m.isPlaying {
-				// If already playing, stop the current playback
 				fmt.Println("Stopping current playback...")
 				m.isPlaying = false
-				m.currentFile = ""
-				m.playerMutex.Lock()
-				player.StopPlayback() // Stop the player (this could be a function you create)
-				m.playerMutex.Unlock()
+				m.currentTrack.Close() // Close the current track
+				m.player.Stop()        // Stop the player
 			}
+
+			// Load the new track
+			track, err := player.LoadTrack(selectedFile.Path)
+			if err != nil {
+				fmt.Println("Error loading track:", err)
+				break
+			}
+
 			// Start playback in a new goroutine
 			m.isPlaying = true
+			m.currentTrack = track
+			m.player.PlayTrack(track)
+			m.currentTrack = track
 			m.currentFile = selectedFile.Name
 			fmt.Printf("Playing: %s\n", m.currentFile)
 
-			// Run playback asynchronously
-			m.playerMutex.Lock()
-			go func() {
-				player.PlayMP3(selectedFile.Path)
-				m.playerMutex.Unlock()
-			}()
 		case "esc":
 			// Exit the program if no song is playing
 			if !m.isPlaying {
@@ -78,20 +84,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { // Changed receiver t
 			if m.isPlaying {
 				fmt.Println("Stopping playback...")
 				m.isPlaying = false
-				m.currentFile = ""
-				m.playerMutex.Lock()
-				player.StopPlayback() // Stop the player
-				m.playerMutex.Unlock()
+				m.currentTrack.Close()
+				m.player.Stop()
 			}
 		case "q":
 			// Stop playback and exit the program
 			if m.isPlaying {
 				fmt.Println("Stopping playback and quitting...")
 				m.isPlaying = false
-				m.currentFile = ""
-				m.playerMutex.Lock()
-				player.StopPlayback() // Stop the player
-				m.playerMutex.Unlock()
+				m.currentTrack.Close()
+				m.player.Stop()
 			}
 			return m, tea.Quit
 		}
@@ -100,7 +102,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { // Changed receiver t
 	return m, nil
 }
 
-func (m *model) View() string { // Changed receiver to *model
+func (m *model) View() string {
 	view := "MP3 Files:\n\n"
 
 	// Show items in pages
@@ -164,7 +166,7 @@ func main() {
 	}
 
 	// Run TUI program
-	if _, err := tea.NewProgram(&model{items: metadataList}).Run(); err != nil { // Passed pointer here
+	if _, err := tea.NewProgram(&model{items: metadataList}).Run(); err != nil {
 		fmt.Printf("Could not start program :(\n%v\n", err)
 		os.Exit(1)
 	}

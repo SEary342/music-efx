@@ -2,67 +2,108 @@ package player
 
 import (
 	"fmt"
-	"music-efx/internal/files"
+	"os"
+	"sync"
 	"time"
 
-	"github.com/ebitengine/oto/v3"
+	"github.com/faiface/beep"
+	"github.com/faiface/beep/effects"
+	"github.com/faiface/beep/mp3"
+	"github.com/faiface/beep/speaker"
 )
 
-var currentPlayer *oto.Player // Track the current player
-
-// PlayMP3 starts playing an MP3 file and sets the global player instance
-func PlayMP3(filePath string) {
-	// Stop the current player if it's already playing
-	if currentPlayer != nil {
-		StopPlayback() // Stop the current playback before starting a new one
-	}
-
-	// Load the MP3 file
-	decodedMp3, err := files.LoadFile(filePath)
-	if err != nil {
-		panic("mp3.NewDecoder failed: " + err.Error())
-	}
-
-	// Prepare an Oto context for playback
-	op := &oto.NewContextOptions{
-		SampleRate:   44100,
-		ChannelCount: 2,
-		Format:       oto.FormatSignedInt16LE,
-	}
-	otoCtx, readyChan, err := oto.NewContext(op)
-	if err != nil {
-		panic("oto.NewContext failed: " + err.Error())
-	}
-	<-readyChan
-
-	// Create the player for the decoded MP3
-	currentPlayer = otoCtx.NewPlayer(decodedMp3)
-	currentPlayer.Play()
-
-	// Keep the program running until the song finishes
-	for currentPlayer.IsPlaying() {
-		time.Sleep(time.Millisecond)
-	}
-	err = currentPlayer.Close()
-	if err != nil {
-		panic("player.Close failed: " + err.Error())
-	}
-
-	// Clear the player after playback finishes
-	currentPlayer = nil
+type Track struct {
+	Path   string
+	Length time.Duration
+	Stream beep.StreamSeekCloser
+	Format beep.Format
 }
 
-// StopPlayback stops the current playback if a song is playing
-func StopPlayback() {
-	// Check if there's a player instance to stop
-	if currentPlayer != nil {
-		err := currentPlayer.Close()
-		if err != nil {
-			fmt.Println("Error stopping playback:", err)
-		} else {
-			fmt.Println("Playback stopped.")
-		}
-		// Clear the player instance
-		currentPlayer = nil
+// LoadTrack loads an MP3 file, extracts its length, and prepares it for playback.
+func LoadTrack(path string) (*Track, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
+
+	stream, format, err := mp3.Decode(file)
+	if err != nil {
+		file.Close()
+		return nil, fmt.Errorf("failed to decode mp3: %w", err)
+	}
+
+	length := time.Duration(float64(stream.Len()) / float64(format.SampleRate) * float64(time.Second))
+	return &Track{Path: path, Length: length, Stream: stream, Format: format}, nil
+}
+
+// Close releases resources associated with a track.
+func (t *Track) Close() {
+	t.Stream.Close()
+}
+
+type Player struct {
+	mu       sync.Mutex
+	playing  bool
+	stopping bool
+	track    *Track
+}
+
+// PlayTrack starts playing a track in a non-blocking manner.
+func (p *Player) PlayTrack(track *Track) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.playing {
+		fmt.Println("Already playing a track. Stop it first.")
+		return
+	}
+
+	p.track = track
+	p.stopping = false
+	p.playing = true
+
+	speaker.Init(track.Format.SampleRate, track.Format.SampleRate.N(time.Second/10))
+
+	ctrl := &beep.Ctrl{Streamer: track.Stream, Paused: false}
+	go func() {
+		speaker.Play(beep.Seq(ctrl, beep.Callback(func() {
+			p.mu.Lock()
+			p.playing = false
+			p.mu.Unlock()
+		})))
+	}()
+}
+
+// Stop stops the currently playing track.
+func (p *Player) Stop() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if !p.playing {
+		fmt.Println("No track is currently playing.")
+		return
+	}
+
+	p.stopping = true
+	speaker.Clear()
+	p.track.Stream.Seek(0)
+	p.playing = false
+}
+
+// Crossfade transitions smoothly to a new track.
+func (p *Player) Crossfade(nextTrack *Track, duration time.Duration) {
+	if p.track == nil || nextTrack == nil {
+		fmt.Println("Both current and next tracks are required for crossfade.")
+		return
+	}
+
+	fadeOut := effects.Volume{Streamer: p.track.Stream, Base: 2, Volume: -1}
+	fadeIn := effects.Volume{Streamer: nextTrack.Stream, Base: 2, Volume: -1}
+
+	combined := beep.Mix(&fadeOut, &fadeIn)
+
+	speaker.Init(nextTrack.Format.SampleRate, nextTrack.Format.SampleRate.N(time.Second/10))
+	go func() {
+		speaker.Play(combined)
+	}()
 }
