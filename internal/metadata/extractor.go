@@ -18,12 +18,12 @@ func ExtractMetadata(file string) (model.MP3Metadata, error) {
 	defer track.Close()
 	return model.MP3Metadata{
 		Name:   strings.TrimSuffix(filepath.Base(file), filepath.Ext(file)),
-		Length: formatLength(track.Length),
+		Length: track.Length,
 		Path:   file,
 	}, nil
 }
 
-func formatLength(length time.Duration) string {
+func FormatLength(length time.Duration) string {
 	// Convert length to seconds
 	seconds := int(length / time.Second)
 	minutes := seconds / 60

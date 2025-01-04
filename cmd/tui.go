@@ -110,9 +110,9 @@ func (m *model) View() string {
 		item := m.items[i]
 		if i == m.selectedIndex {
 			// Add a clear indicator for the selected item (e.g., ">")
-			view += fmt.Sprintf("> %s (%s)\n", item.Name, item.Length)
+			view += fmt.Sprintf("> %s (%s)\n", item.Name, metadata.FormatLength(item.Length))
 		} else {
-			view += fmt.Sprintf("  %s (%s)\n", item.Name, item.Length)
+			view += fmt.Sprintf("  %s (%s)\n", item.Name, metadata.FormatLength(item.Length))
 		}
 	}
 
