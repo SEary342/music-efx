@@ -5,6 +5,7 @@ go 1.23.4
 require (
 	github.com/charmbracelet/bubbletea v1.2.4
 	github.com/faiface/beep v1.1.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

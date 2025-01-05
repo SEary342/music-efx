@@ -150,7 +150,7 @@ func main() {
 	directory := getDirectory()
 
 	// Discover MP3 files in the specified directory
-	paths, err := files.FindMP3Files(directory)
+	paths, err := files.FindFiles(directory, ".mp3")
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
