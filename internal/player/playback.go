@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/faiface/beep"
-	"github.com/faiface/beep/effects"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
 )
@@ -49,6 +48,7 @@ type Player struct {
 }
 
 // PlayTrack starts playing a track in a non-blocking manner.
+// PlayTrack starts playing a track in a non-blocking manner and displays the playback position as a progress bar.
 func (p *Player) PlayTrack(track *Track) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -62,11 +62,54 @@ func (p *Player) PlayTrack(track *Track) {
 	p.stopping = false
 	p.playing = true
 
+	// Initialize the speaker with the track's format
 	speaker.Init(track.Format.SampleRate, track.Format.SampleRate.N(time.Second/10))
 
+	// Create a control streamer to manage playback
 	ctrl := &beep.Ctrl{Streamer: track.Stream, Paused: false}
+
+	// Start a goroutine to display the playback position and progress bar
+	go func() {
+		ticker := time.NewTicker(500 * time.Millisecond) // Update every 0.5 seconds
+		defer ticker.Stop()
+
+		for range ticker.C {
+			p.mu.Lock()
+			if !p.playing || p.stopping || p.track == nil {
+				p.mu.Unlock()
+				return
+			}
+
+			// Calculate the current position and total length in seconds
+			position := float64(p.track.Stream.Position()) / float64(p.track.Format.SampleRate)
+			total := float64(p.track.Stream.Len()) / float64(p.track.Format.SampleRate)
+			p.mu.Unlock()
+
+			// Calculate the progress percentage
+			progress := position / total
+
+			// Construct the progress bar
+			barLength := 50 // Length of the progress bar (in characters)
+			progressBar := ""
+			for i := 0; i < barLength; i++ {
+				if float64(i)/float64(barLength) < progress {
+					progressBar += "="
+				} else {
+					progressBar += " "
+				}
+			}
+
+			// Clear the line and update the playback position with progress bar
+			fmt.Printf("\rPlaying: %s [%s] %.1fs / %.1fs", p.track.Path, progressBar, position, total)
+			// Flush the output to ensure it prints immediately
+			fmt.Print()
+		}
+	}()
+
+	// Start playing the track
 	go func() {
 		speaker.Play(beep.Seq(ctrl, beep.Callback(func() {
+			// Callback when the track ends
 			p.mu.Lock()
 			p.playing = false
 			p.mu.Unlock()
@@ -88,22 +131,4 @@ func (p *Player) Stop() {
 	speaker.Clear()
 	p.track.Stream.Seek(0)
 	p.playing = false
-}
-
-// Crossfade transitions smoothly to a new track.
-func (p *Player) Crossfade(nextTrack *Track, duration time.Duration) {
-	if p.track == nil || nextTrack == nil {
-		fmt.Println("Both current and next tracks are required for crossfade.")
-		return
-	}
-
-	fadeOut := effects.Volume{Streamer: p.track.Stream, Base: 2, Volume: -1}
-	fadeIn := effects.Volume{Streamer: nextTrack.Stream, Base: 2, Volume: -1}
-
-	combined := beep.Mix(&fadeOut, &fadeIn)
-
-	speaker.Init(nextTrack.Format.SampleRate, nextTrack.Format.SampleRate.N(time.Second/10))
-	go func() {
-		speaker.Play(combined)
-	}()
 }
