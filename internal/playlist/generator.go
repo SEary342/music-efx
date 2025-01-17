@@ -3,23 +3,22 @@ package playlist
 import (
 	"math/rand"
 	"music-efx/pkg/model"
+	"slices"
 	"sort"
-	"time"
 )
 
-func Generate(items []model.MP3Metadata, duration time.Duration) []model.MP3Metadata {
+func Generate(items []model.MP3Metadata, duration int, crossfadeDuration int) []model.MP3Metadata {
 	randomized := randomizePlaylist(items)
 	if duration == 0 {
 		return randomized
 	}
 
-	playlist := generateClosestPlaylist(randomized, duration)
+	playlist := generateClosestPlaylist(randomized, duration, crossfadeDuration)
 	return playlist
 }
 
-func generateClosestPlaylist(items []model.MP3Metadata, duration time.Duration) []model.MP3Metadata {
+func generateClosestPlaylist(items []model.MP3Metadata, maxDuration int, crossfadeDuration int) []model.MP3Metadata {
 	n := len(items)
-	maxDuration := int(duration.Seconds())
 
 	// Create a DP table
 	dp := make([][]int, n+1)
@@ -30,11 +29,23 @@ func generateClosestPlaylist(items []model.MP3Metadata, duration time.Duration) 
 	// Fill the DP table
 	for i := 1; i <= n; i++ {
 		itemDuration := int(items[i-1].Length.Seconds())
+
+		// Adjust item duration for crossfade if it's not the first item
+		effectiveDuration := itemDuration
+		if i > 1 {
+			effectiveDuration -= crossfadeDuration
+		}
+
+		// Ensure effectiveDuration is at least 0
+		if effectiveDuration < 0 {
+			effectiveDuration = 0
+		}
+
 		for j := 0; j <= maxDuration; j++ {
-			if itemDuration > j {
+			if effectiveDuration > j {
 				dp[i][j] = dp[i-1][j]
 			} else {
-				dp[i][j] = max(dp[i-1][j], dp[i-1][j-itemDuration]+itemDuration)
+				dp[i][j] = max(dp[i-1][j], dp[i-1][j-effectiveDuration]+itemDuration)
 			}
 		}
 	}
@@ -46,8 +57,15 @@ func generateClosestPlaylist(items []model.MP3Metadata, duration time.Duration) 
 		if dp[i][remainingDuration] != dp[i-1][remainingDuration] {
 			selected = append(selected, items[i-1])
 			remainingDuration -= int(items[i-1].Length.Seconds())
+
+			// Adjust remaining duration for crossfade
+			if i > 1 {
+				remainingDuration += crossfadeDuration
+			}
 		}
 	}
+
+	slices.Reverse(selected)
 
 	return selected
 }

@@ -15,7 +15,7 @@ A terminal-based MP3 player built with Go. This app lets users navigate through 
 
 Before running the app, you will need:
 
-- Go 1.18 or higher.
+- Go 1.21 or higher.
 - A terminal environment for interacting with the TUI (Text User Interface).
 
 ## Installation
