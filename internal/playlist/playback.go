@@ -7,16 +7,17 @@ import (
 	"time"
 )
 
-func GenerateAndPlay(items []model.MP3Metadata, duration int, crossfadeDuration int) {
-	playlist := Generate(items, duration, crossfadeDuration)
-	for _, item := range playlist {
-		fmt.Println(item.Name)
-		fmt.Println(item.Length)
-	}
-	Play(playlist, crossfadeDuration)
+func GenerateAndPlay(items []model.MP3Metadata, duration int) {
+	playlist := Generate(items, duration, 0)
+	Play(playlist)
 }
 
-func Play(playlist []model.MP3Metadata, crossfadeDuration int) {
+func RandomPlay(playlist []model.MP3Metadata) {
+	items := randomizePlaylist(playlist)
+	Play(items)
+}
+
+func Play(playlist []model.MP3Metadata) {
 	if len(playlist) == 0 {
 		fmt.Println("Playlist is empty. Nothing to play.")
 		return
