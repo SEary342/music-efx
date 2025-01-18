@@ -130,4 +130,5 @@ func (p *Player) Stop() {
 	speaker.Clear()
 	p.track.Stream.Seek(0)
 	p.playing = false
+	p.track.Close()
 }

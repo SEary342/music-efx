@@ -34,10 +34,9 @@ type model struct {
 	allItems      []metaModel.MP3Metadata
 	selectedIndex int
 	// Playback-related fields
-	isPlaying    bool
-	currentTrack *player.Track
-	currentFile  string
-	player       *player.Player
+	isPlaying   bool
+	currentFile string
+	player      *player.Player
 	// Stop channel for playback control
 	stopChan chan bool
 }
@@ -87,7 +86,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					fmt.Println("Failed to load playlist mp3 files.")
 					return m, nil
 				}
-				go playlist.RandomPlay(mp3Meta, m.stopChan)
+				go playlist.RandomPlay(mp3Meta, m.handlePlayback)
 			} else if m.inFolderNav {
 				// Handle folder navigation
 				if m.selectedIndex < len(m.items) {
@@ -130,12 +129,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			// Handle stopping the auto-playlist with ESC
 			if m.isPlaying {
-				// Stop playback by sending a signal to the stopChan
 				fmt.Println("Stopping playback...")
 				m.isPlaying = false
-				m.currentTrack.Close()
 				m.player.Stop()
-				m.stopChan <- true         // Signal to stop playback
 				fmt.Print("\033[H\033[2J") // Clear terminal screen
 				m.reset()
 			} else if m.inPlaylist || m.inFolderNav || m.inSearch {
@@ -202,17 +198,10 @@ func (m *model) startAutoPlaylist() {
 
 			// Start the next playlist
 			fmt.Println("Starting playlist:", lst.Name)
-			playlist.GenerateAndPlay(mp3MetaMap[lst.Name], duration, m.stopChan)
+			go playlist.GenerateAndPlay(mp3MetaMap[lst.Name], duration, m.handlePlayback)
 
 			// Wait for the playlist to finish or until stop signal is received
-			select {
-			case <-time.After(time.Duration(duration) * time.Second):
-				// Continue after the playlist duration ends
-			case <-m.stopChan:
-				// Exit if a stop signal is received
-				fmt.Println("Auto-playlist stopped.")
-				return
-			}
+			time.Sleep(time.Duration(duration) * time.Second)
 		}
 
 		m.player.Stop()
@@ -231,7 +220,6 @@ func (m *model) handlePlayback(file metaModel.MP3Metadata) {
 	if m.isPlaying {
 		fmt.Println("Stopping current playback...")
 		m.isPlaying = false
-		m.currentTrack.Close()
 		m.player.Stop()
 	}
 
@@ -247,7 +235,6 @@ func (m *model) handlePlayback(file metaModel.MP3Metadata) {
 
 	// Start playback in a new goroutine
 	m.isPlaying = true
-	m.currentTrack = track
 	m.player.PlayTrack(track)
 	m.currentFile = file.Name
 }
