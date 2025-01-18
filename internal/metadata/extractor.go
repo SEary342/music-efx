@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"music-efx/internal/files"
 	"music-efx/internal/player"
 	"music-efx/pkg/model"
 )
@@ -29,4 +30,23 @@ func FormatLength(length time.Duration) string {
 	minutes := seconds / 60
 	seconds = seconds % 60
 	return fmt.Sprintf("%02d:%02d", minutes, seconds)
+}
+
+func LoadMp3Metadata(directory string) ([]model.MP3Metadata, error) {
+	// Discover MP3 files in the specified directory
+	paths, err := files.FindFiles(directory, ".mp3")
+	if err != nil {
+		fmt.Println("Error loading mp3 data:", err)
+		return nil, err
+	}
+
+	// Extract metadata for the MP3 files
+	var metadataList []model.MP3Metadata
+	for _, path := range paths {
+		meta, err := ExtractMetadata(path)
+		if err == nil {
+			metadataList = append(metadataList, meta)
+		}
+	}
+	return metadataList, nil
 }

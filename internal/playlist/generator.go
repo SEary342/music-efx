@@ -65,6 +65,12 @@ func generateClosestPlaylist(items []model.MP3Metadata, maxDuration int, crossfa
 		}
 	}
 
+	// If no items are selected, pick at least one item (even if it doesn't meet the max duration)
+	if len(selected) == 0 {
+		selected = append(selected, items[0]) // Pick the first item
+	}
+
+	// Reverse to maintain the original order of selected items
 	slices.Reverse(selected)
 
 	return selected

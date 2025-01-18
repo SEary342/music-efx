@@ -123,7 +123,6 @@ func (p *Player) Stop() {
 	defer p.mu.Unlock()
 
 	if !p.playing {
-		fmt.Println("No track is currently playing.")
 		return
 	}
 

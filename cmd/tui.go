@@ -2,12 +2,15 @@ package main
 
 import (
 	"fmt"
-	"os"
+	"sort"
 	"strings"
+	"time"
 
+	"music-efx/internal/config"
 	"music-efx/internal/files"
 	"music-efx/internal/metadata"
 	"music-efx/internal/player"
+	"music-efx/internal/playlist"
 	metaModel "music-efx/pkg/model"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -22,6 +25,7 @@ type model struct {
 	inSearch      bool
 	searchQuery   string
 	searchResults []metaModel.MP3Metadata
+	playlists     []metaModel.PlaylistData
 	// Folder navigation-related fields
 	directoryTree map[string][]metaModel.MP3Metadata
 	currentDir    string
@@ -34,11 +38,14 @@ type model struct {
 	currentTrack *player.Track
 	currentFile  string
 	player       *player.Player
+	// Stop channel for playback control
+	stopChan chan bool
 }
 
 func (m *model) Init() tea.Cmd {
-	// Initialize the player
+	// Initialize the player and stop channel
 	m.player = &player.Player{}
+	m.stopChan = make(chan bool) // Initialize the stop channel
 	// Load main menu items
 	m.reset()
 	return nil
@@ -50,7 +57,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle key input
 		switch msg.String() {
 		case "up":
-			// Move selection up in the menu or MP3 list
+			// Handle up arrow key press
 			if m.inSearch || m.inPlaylist || m.inFolderNav {
 				if m.selectedIndex > 0 {
 					m.selectedIndex--
@@ -61,9 +68,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "down":
-			// Move selection down
+			// Handle down arrow key press
 			if m.inSearch || m.inPlaylist || m.inFolderNav {
-				if m.selectedIndex < len(m.items)-1 {
+				if m.selectedIndex < len(m.playlists)-1 {
 					m.selectedIndex++
 				}
 			} else {
@@ -73,8 +80,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			if m.inPlaylist {
-				// Handle playlist selection (stubbed)
-				fmt.Println("Playlist selected!")
+				// Handle playlist selection
+				playlistMeta := m.playlists[m.selectedIndex]
+				mp3Meta, err := metadata.LoadMp3Metadata(playlistMeta.Path)
+				if err != nil {
+					fmt.Println("Failed to load playlist mp3 files.")
+					return m, nil
+				}
+				go playlist.RandomPlay(mp3Meta, m.stopChan)
 			} else if m.inFolderNav {
 				// Handle folder navigation
 				if m.selectedIndex < len(m.items) {
@@ -95,9 +108,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				// Handle main menu actions
 				switch m.menuItems[m.menuIndex] {
+				case "Auto-Playlist":
+					go m.startAutoPlaylist()
 				case "Playlists":
 					m.inPlaylist = true
-					m.menuItems = []string{"Playlist 1", "Playlist 2", "Back"}
+					m.menuItems = []string{"Back"}
+					for _, playlist := range m.playlists {
+						m.menuItems = append(m.menuItems, playlist.Name)
+					}
 				case "Folder Navigation":
 					m.inFolderNav = true
 					m.updateItemsForCurrentDir()
@@ -110,20 +128,25 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "esc":
+			// Handle stopping the auto-playlist with ESC
 			if m.isPlaying {
-				// Stop playback
+				// Stop playback by sending a signal to the stopChan
 				fmt.Println("Stopping playback...")
 				m.isPlaying = false
 				m.currentTrack.Close()
 				m.player.Stop()
-				fmt.Print("\033[H\033[2J")
+				m.stopChan <- true         // Signal to stop playback
+				fmt.Print("\033[H\033[2J") // Clear terminal screen
 				m.reset()
 			} else if m.inPlaylist || m.inFolderNav || m.inSearch {
-				fmt.Print("\033[H\033[2J")
+				// If we are in a playlist, folder navigation, or search, reset
+				fmt.Print("\033[H\033[2J") // Clear terminal screen
 				m.reset()
 			} else {
+				// Exit the program if in the main menu
 				return m, tea.Quit
 			}
+
 		case "backspace":
 			// Handle backspace for search query
 			if len(m.searchQuery) > 0 {
@@ -147,11 +170,61 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *model) startAutoPlaylist() {
+	// Run the playlist logic in a goroutine to avoid blocking the UI
+	go func() {
+		playlistMeta := make([]metaModel.PlaylistData, len(m.playlists))
+		copy(playlistMeta, m.playlists)
+
+		sort.Slice(playlistMeta, func(i, j int) bool {
+			return playlistMeta[i].End.Before(playlistMeta[j].End.Time)
+		})
+
+		mp3MetaMap := make(map[string][]metaModel.MP3Metadata)
+		for _, lst := range playlistMeta {
+			mp3Meta, err := metadata.LoadMp3Metadata(lst.Path)
+			if err != nil {
+				fmt.Println("Failed to load playlist mp3 files.")
+				continue
+			}
+			mp3MetaMap[lst.Name] = mp3Meta
+		}
+
+		for _, lst := range playlistMeta {
+			duration := int(time.Until(lst.End.Time).Seconds())
+			if duration <= 0 {
+				fmt.Println("Skipping expired playlist:", lst.Name)
+				continue
+			}
+
+			// Stop the currently playing track, if any
+			m.player.Stop()
+
+			// Start the next playlist
+			fmt.Println("Starting playlist:", lst.Name)
+			playlist.GenerateAndPlay(mp3MetaMap[lst.Name], duration, m.stopChan)
+
+			// Wait for the playlist to finish or until stop signal is received
+			select {
+			case <-time.After(time.Duration(duration) * time.Second):
+				// Continue after the playlist duration ends
+			case <-m.stopChan:
+				// Exit if a stop signal is received
+				fmt.Println("Auto-playlist stopped.")
+				return
+			}
+		}
+
+		m.player.Stop()
+		fmt.Println("All playlists have finished.")
+	}()
+}
+
 func (m *model) reset() {
 	m.inPlaylist = false
 	m.inFolderNav = false
 	m.inSearch = false
-	m.menuItems = []string{"Playlists", "Folder Navigation", "Search", "Quit"}
+	m.menuItems = []string{"Auto-Playlist", "Playlists", "Folder Navigation", "Search", "Quit"}
 }
 
 func (m *model) handlePlayback(file metaModel.MP3Metadata) {
@@ -221,7 +294,7 @@ func (m *model) View() string {
 		view += m.renderMenu(m.searchResults, m.selectedIndex)
 	} else if m.inPlaylist {
 		view = "Select a Playlist:\n"
-		view += m.renderMenu(m.menuItems, m.selectedIndex)
+		view += m.renderMenu(m.playlists, m.selectedIndex)
 	} else if m.inFolderNav {
 		view = "Select a Folder/File:\n"
 		view += m.renderMenu(m.items, m.selectedIndex)
@@ -251,6 +324,15 @@ func (m *model) renderMenu(items interface{}, selectedIndex int) string {
 				view += "  " + dispName + "\n"
 			}
 		}
+	case []metaModel.PlaylistData:
+		// Render MP3 items
+		for i, item := range items {
+			if i == selectedIndex {
+				view += "> " + item.Name + "\n" // Add ">" for the selected item
+			} else {
+				view += "  " + item.Name + "\n"
+			}
+		}
 	case []string:
 		// Render menu items (directories and files)
 		for i, item := range items {
@@ -269,33 +351,24 @@ func main() {
 	// Get the directory path (either from arguments or prompt)
 	directory := files.GetDirectory()
 
-	// Discover MP3 files in the specified directory
-	paths, err := files.FindFiles(directory, ".mp3")
+	metadataList, err := metadata.LoadMp3Metadata(directory)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
 
-	// Extract metadata for the MP3 files
-	var metadataList []metaModel.MP3Metadata
-	for _, path := range paths {
-		meta, err := metadata.ExtractMetadata(path)
-		if err == nil {
-			metadataList = append(metadataList, meta)
-		}
-	}
-
 	// Create a directory tree from the file paths
 	directoryTree := files.CreateDirectoryTree(metadataList)
-	fmt.Println(directoryTree)
+
+	playlists := config.LoadPlaylistYaml()
 
 	// Run TUI program
 	if _, err := tea.NewProgram(&model{
 		directoryTree: directoryTree,
 		currentDir:    directory,
 		allItems:      metadataList,
+		playlists:     playlists,
 	}).Run(); err != nil {
-		fmt.Printf("Could not start program :(\n%v\n", err)
-		os.Exit(1)
+		fmt.Println("Error running program:", err)
 	}
 }

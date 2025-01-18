@@ -29,6 +29,10 @@ func (t *Time) UnmarshalYAML(value *yaml.Node) error {
 	if err != nil {
 		return err
 	}
-	t.Time = parsedTime
+
+	// Combine the parsed time with today's date
+	now := time.Now()
+	t.Time = time.Date(now.Year(), now.Month(), now.Day(), parsedTime.Hour(), parsedTime.Minute(), 0, 0, now.Location())
+
 	return nil
 }

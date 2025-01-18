@@ -7,17 +7,17 @@ import (
 	"time"
 )
 
-func GenerateAndPlay(items []model.MP3Metadata, duration int) {
+func GenerateAndPlay(items []model.MP3Metadata, duration int, stopChan chan bool) {
 	playlist := Generate(items, duration, 0)
-	Play(playlist)
+	Play(playlist, stopChan)
 }
 
-func RandomPlay(playlist []model.MP3Metadata) {
+func RandomPlay(playlist []model.MP3Metadata, stopChan chan bool) {
 	items := randomizePlaylist(playlist)
-	Play(items)
+	Play(items, stopChan)
 }
 
-func Play(playlist []model.MP3Metadata) {
+func Play(playlist []model.MP3Metadata, stopChan chan bool) {
 	if len(playlist) == 0 {
 		fmt.Println("Playlist is empty. Nothing to play.")
 		return
@@ -34,8 +34,15 @@ func Play(playlist []model.MP3Metadata) {
 		}
 		p.PlayTrack(currentTrack)
 
-		// Wait for the track to finish
-		time.Sleep(currentTrack.Length)
+		// Wait for the track to finish or until a stop signal is received
+		select {
+		case <-time.After(currentTrack.Length): // Wait for the track duration
+			// Continue to the next track
+		case <-stopChan: // Stop if the signal is received
+			fmt.Println("Playback stopped early.")
+			p.Stop() // Ensure the player stops
+			return
+		}
 	}
 
 	// Stop the player after the last track
