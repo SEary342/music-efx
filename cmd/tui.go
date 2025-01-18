@@ -200,7 +200,6 @@ func (m *model) startAutoPlaylist() {
 			fmt.Println("Starting playlist:", lst.Name)
 			go playlist.GenerateAndPlay(mp3MetaMap[lst.Name], duration, m.handlePlayback)
 
-			// Wait for the playlist to finish or until stop signal is received
 			time.Sleep(time.Duration(duration) * time.Second)
 		}
 
@@ -240,11 +239,8 @@ func (m *model) handlePlayback(file metaModel.MP3Metadata) {
 }
 
 func (m *model) updateSearchResults() {
-	// Find files that match the search query (simple contains check)
 	m.searchResults = nil
-	//fmt.Println(m.allItems)
 	for _, file := range m.allItems {
-		//fmt.Println(m.searchQuery)
 		if strings.Contains(strings.ToLower(file.Name), strings.ToLower(m.searchQuery)) {
 			m.searchResults = append(m.searchResults, file)
 		}
@@ -300,13 +296,13 @@ func (m *model) renderMenu(items interface{}, selectedIndex int) string {
 	case []metaModel.MP3Metadata:
 		// Render MP3 items
 		for i, item := range items {
-			dispName := item.Name // Add folder icon for directories
+			dispName := item.Name
 			if item.Name == item.Path {
 				nameParts := strings.Split(item.Name, "/")
-				dispName = "📁 " + nameParts[len(nameParts)-1] // Add folder icon for directories
+				dispName = "📁 " + nameParts[len(nameParts)-1]
 			}
 			if i == selectedIndex {
-				view += "> " + dispName + "\n" // Add ">" for the selected item
+				view += "> " + dispName + "\n"
 			} else {
 				view += "  " + dispName + "\n"
 			}
@@ -315,7 +311,7 @@ func (m *model) renderMenu(items interface{}, selectedIndex int) string {
 		// Render MP3 items
 		for i, item := range items {
 			if i == selectedIndex {
-				view += "> " + item.Name + "\n" // Add ">" for the selected item
+				view += "> " + item.Name + "\n"
 			} else {
 				view += "  " + item.Name + "\n"
 			}
@@ -324,7 +320,7 @@ func (m *model) renderMenu(items interface{}, selectedIndex int) string {
 		// Render menu items (directories and files)
 		for i, item := range items {
 			if i == selectedIndex {
-				view += "> " + item + "\n" // Add ">" for the selected item
+				view += "> " + item + "\n"
 			} else {
 				view += "  " + item + "\n"
 			}

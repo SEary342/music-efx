@@ -98,7 +98,6 @@ func generateClosestPlaylist(items []model.MP3Metadata, targetDuration int, cros
 	return selected
 }
 
-// Helper function to check if an item is already in the selected list
 func contains(list []model.MP3Metadata, item model.MP3Metadata) bool {
 	for _, selectedItem := range list {
 		if selectedItem == item {
