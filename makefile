@@ -22,7 +22,7 @@ build:
 build-linux:
 	@echo "Building for Linux..."
 	@mkdir -p $(OUTPUT_DIR)
-	GOOS=linux GOARCH=amd64 go build -o $(OUTPUT_DIR)/$(APP_NAME)-linux $(MAIN_FILE)
+	GOOS=linux GOARCH=amd64 go build -o $(OUTPUT_DIR)/$(APP_NAME) $(MAIN_FILE)
 
 # Cross-compile for Windows
 build-windows:
