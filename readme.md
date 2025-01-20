@@ -1,3 +1,5 @@
+<img src="logoBig.png" alt="MusicEFX Logo" width="200" height="200">
+
 # MusicEFX
 
 A terminal-based MP3 player built with Go. MusicEFX allows users to navigate directories, select MP3 files, search for songs, and play them directly from the terminal. With a simple TUI interface, the app offers playlist management, folder navigation, search functionality, and playback controls.
