@@ -48,7 +48,6 @@ type Player struct {
 }
 
 // PlayTrack starts playing a track in a non-blocking manner.
-// PlayTrack starts playing a track in a non-blocking manner and displays the playback position as a progress bar.
 func (p *Player) PlayTrack(track *Track) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -67,44 +66,6 @@ func (p *Player) PlayTrack(track *Track) {
 
 	// Create a control streamer to manage playback
 	ctrl := &beep.Ctrl{Streamer: track.Stream, Paused: false}
-
-	// Start a goroutine to display the playback position and progress bar
-	go func() {
-		ticker := time.NewTicker(500 * time.Millisecond) // Update every 0.5 seconds
-		defer ticker.Stop()
-
-		for range ticker.C {
-			p.mu.Lock()
-			if !p.playing || p.stopping || p.track == nil {
-				p.mu.Unlock()
-				return
-			}
-
-			// Calculate the current position and total length in seconds
-			position := float64(p.track.Stream.Position()) / float64(p.track.Format.SampleRate)
-			total := float64(p.track.Stream.Len()) / float64(p.track.Format.SampleRate)
-			p.mu.Unlock()
-
-			// Calculate the progress percentage
-			progress := position / total
-
-			// Construct the progress bar
-			barLength := 50 // Length of the progress bar (in characters)
-			progressBar := ""
-			for i := 0; i < barLength; i++ {
-				if float64(i)/float64(barLength) < progress {
-					progressBar += "="
-				} else {
-					progressBar += " "
-				}
-			}
-
-			// Clear the line and update the playback position with progress bar
-			fmt.Printf("\rPlaying: %s [%s] %.1fs / %.1fs", p.track.Path, progressBar, position, total)
-			// Flush the output to ensure it prints immediately
-			fmt.Print()
-		}
-	}()
 
 	// Start playing the track
 	go func() {
