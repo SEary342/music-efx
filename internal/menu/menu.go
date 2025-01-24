@@ -25,8 +25,14 @@ func (i item) Description() string { return i.desc }
 func (i item) FilterValue() string { return i.title }
 
 type model struct {
-	list   list.Model
-	choice string
+	list    list.Model
+	choice  string
+	exiting bool
+}
+
+type ExitModel struct {
+	Choice  string
+	Exiting bool
 }
 
 func (m model) Init() tea.Cmd {
@@ -37,7 +43,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
-		case "ctrl+c":
+		case "ctrl+c", "esc":
+			m.exiting = true
 			return m, tea.Quit
 		case "enter":
 			i, ok := m.list.SelectedItem().(item)
@@ -61,7 +68,7 @@ func (m model) View() string {
 	return docStyle.Render(m.list.View())
 }
 
-func Menu(items []MenuItem, title string, filterEnabled bool, statusBarEnabled bool) string {
+func Menu(items []MenuItem, title string, filterEnabled bool, statusBarEnabled bool) ExitModel {
 	var listItems []list.Item
 	for _, mi := range items {
 		listItems = append(listItems, item{title: mi.Title, desc: mi.Description})
@@ -79,5 +86,5 @@ func Menu(items []MenuItem, title string, filterEnabled bool, statusBarEnabled b
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}
-	return m.choice
+	return ExitModel{Choice: m.choice, Exiting: m.exiting}
 }

@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"music-efx/internal/menu"
+	"music-efx/internal/player"
+	"os"
 )
 
 var title string = "Music-EFX"
@@ -14,17 +16,21 @@ var mainMenuItems = []menu.MenuItem{
 }
 
 func main() {
-	//for {
-	menuSelection := menu.Menu(mainMenuItems, title, false, false)
-	fmt.Println(menuSelection)
-	switch menuSelection {
-	case "Auto-Playlist":
-		fmt.Println("Playlist")
-	case "Playlist Selection":
-		fmt.Println("Playlist menu")
-	case "Folder Navigation":
-		fmt.Println("folder nav!")
+	for {
+		menuSelection := menu.Menu(mainMenuItems, title, false, false)
+		if menuSelection.Exiting {
+			os.Exit(0)
+		}
+		switch menuSelection.Choice {
+		case "Auto-Playlist":
+			fmt.Println("Playlist")
+		case "Playlist Selection":
+			fmt.Println("Playlist menu")
+		case "Folder Navigation":
+			fmt.Println("folder nav!")
+		}
+		// TODO can we unify these components? Right now they are running as separate programs
+		// TODO This is not the final implementation:
+		player.PlayUI("/home/sameary/Code/music-efx/sample/Test.mp3")
 	}
-	//os.Exit(1)
-	//}
 }
