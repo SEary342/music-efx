@@ -30,6 +30,7 @@ func main() {
 			fmt.Println("folder nav!")
 		}
 		// TODO can we unify these components? Right now they are running as separate programs
+		// https://leg100.github.io/en/posts/building-bubbletea-programs/
 		// TODO This is not the final implementation:
 		player.PlayUI("/home/sameary/Code/music-efx/sample/Test.mp3")
 	}
