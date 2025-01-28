@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"music-efx/internal/app"
 	"music-efx/internal/menu"
 	"music-efx/internal/player"
 	"os"
@@ -16,12 +17,14 @@ var mainMenuItems = []menu.MenuItem{
 }
 
 func main() {
+	menuModel := menu.MenuModel{Items: mainMenuItems, Title: title, Filter: false, Status: false}
+	m := app.Model{Menu: &menuModel}
 	for {
-		menuSelection := menu.Menu(mainMenuItems, title, false, false)
-		if menuSelection.Exiting {
+		menu.Menu(m.Menu)
+		if m.Menu.Exiting {
 			os.Exit(0)
 		}
-		switch menuSelection.Choice {
+		switch m.Menu.Choice {
 		case "Auto-Playlist":
 			fmt.Println("Playlist")
 		case "Playlist Selection":

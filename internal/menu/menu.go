@@ -24,33 +24,32 @@ func (i item) Title() string       { return i.title }
 func (i item) Description() string { return i.desc }
 func (i item) FilterValue() string { return i.title }
 
-type model struct {
+type MenuModel struct {
+	Title   string
+	Filter  bool
+	Status  bool
 	list    list.Model
-	choice  string
-	exiting bool
-}
-
-type ExitModel struct {
+	Items   []MenuItem
 	Choice  string
 	Exiting bool
 }
 
-func (m model) Init() tea.Cmd {
+func (m MenuModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *MenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
 		case "ctrl+c", "esc":
-			m.exiting = true
+			m.Exiting = true
 			return m, tea.Quit
 		case "enter":
 			i, ok := m.list.SelectedItem().(item)
 
 			if ok {
-				m.choice = i.Title()
+				m.Choice = i.Title()
 			}
 			return m, tea.Quit
 		}
@@ -64,21 +63,21 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m model) View() string {
+func (m MenuModel) View() string {
 	return docStyle.Render(m.list.View())
 }
 
-func Menu(items []MenuItem, title string, filterEnabled bool, statusBarEnabled bool) ExitModel {
+func Menu(m *MenuModel) {
 	var listItems []list.Item
-	for _, mi := range items {
+	for _, mi := range m.Items {
 		listItems = append(listItems, item{title: mi.Title, desc: mi.Description})
 	}
 	l := list.New(listItems, list.NewDefaultDelegate(), 0, 0)
-	l.Title = title
-	l.SetFilteringEnabled(filterEnabled)
-	l.SetShowStatusBar(statusBarEnabled)
+	l.Title = m.Title
+	l.SetFilteringEnabled(m.Filter)
+	l.SetShowStatusBar(m.Status)
 
-	m := &model{list: l}
+	m.list = l
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
@@ -86,5 +85,4 @@ func Menu(items []MenuItem, title string, filterEnabled bool, statusBarEnabled b
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}
-	return ExitModel{Choice: m.choice, Exiting: m.exiting}
 }
