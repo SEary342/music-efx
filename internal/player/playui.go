@@ -19,18 +19,15 @@ const (
 
 var helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).Render
 
-func PlayUI(trackPath string) {
-	fileName := filepath.Base(trackPath)
-
-	m := model{
-		progress: progress.New(progress.WithDefaultGradient()),
-		title:    strings.TrimSuffix(fileName, filepath.Ext(fileName)),
-		player:   &Player{},
-		stopChan: make(chan bool),
-	}
+func PlayUI(m *PlayerModel) {
+	fileName := filepath.Base(m.TrackPath)
+	m.progress = progress.New(progress.WithDefaultGradient())
+	m.title = strings.TrimSuffix(fileName, filepath.Ext(fileName))
+	m.player = &Player{}
+	m.stopChan = make(chan bool)
 	m.progress.ShowPercentage = false
 
-	trk, _ := LoadTrack(trackPath)
+	trk, _ := LoadTrack(m.TrackPath)
 	m.timeRemaining = trk.Length
 	m.player.PlayTrack(trk)
 
@@ -42,7 +39,8 @@ func PlayUI(trackPath string) {
 
 type tickMsg time.Time
 
-type model struct {
+type PlayerModel struct {
+	TrackPath     string
 	progress      progress.Model
 	player        *Player
 	stopChan      chan bool
@@ -50,11 +48,11 @@ type model struct {
 	timeRemaining time.Duration
 }
 
-func (m model) Init() tea.Cmd {
+func (m PlayerModel) Init() tea.Cmd {
 	return tea.Batch(tickCmd(), tea.ClearScreen)
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m PlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return m, tea.Quit
@@ -99,7 +97,7 @@ func fmtDuration(d time.Duration) string {
 	return fmt.Sprintf("%02d:%02d", m, s)
 }
 
-func (m model) View() string {
+func (m PlayerModel) View() string {
 	pad := strings.Repeat(" ", padding)
 
 	return "\n" +

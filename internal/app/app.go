@@ -1,6 +1,9 @@
 package app
 
-import "music-efx/internal/menu"
+import (
+	"music-efx/internal/menu"
+	"music-efx/internal/player"
+)
 
 type GlobalModel struct {
 	CurrentView string
@@ -10,4 +13,5 @@ type GlobalModel struct {
 type Model struct {
 	Global *GlobalModel
 	Menu   *menu.MenuModel
+	Player *player.PlayerModel
 }

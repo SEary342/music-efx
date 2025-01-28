@@ -18,7 +18,8 @@ var mainMenuItems = []menu.MenuItem{
 
 func main() {
 	menuModel := menu.MenuModel{Items: mainMenuItems, Title: title, Filter: false, Status: false}
-	m := app.Model{Menu: &menuModel}
+	playerModel := player.PlayerModel{}
+	m := app.Model{Menu: &menuModel, Player: &playerModel}
 	for {
 		menu.Menu(m.Menu)
 		if m.Menu.Exiting {
@@ -35,6 +36,7 @@ func main() {
 		// TODO can we unify these components? Right now they are running as separate programs
 		// https://leg100.github.io/en/posts/building-bubbletea-programs/
 		// TODO This is not the final implementation:
-		player.PlayUI("/home/sameary/Code/music-efx/sample/Test.mp3")
+		m.Player.TrackPath = "/home/sameary/Code/music-efx/sample/Test.mp3"
+		player.PlayUI(m.Player)
 	}
 }
