@@ -1,11 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"music-efx/internal/app"
 	"music-efx/internal/menu"
-	"music-efx/internal/player"
-	"os"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 var title string = "Music-EFX"
@@ -17,26 +16,10 @@ var mainMenuItems = []menu.MenuItem{
 }
 
 func main() {
-	menuModel := menu.MenuModel{Items: mainMenuItems, Title: title, Filter: false, Status: false}
-	playerModel := player.PlayerModel{}
-	m := app.Model{Menu: &menuModel, Player: &playerModel}
-	for {
-		menu.Menu(m.Menu)
-		if m.Menu.Exiting {
-			os.Exit(0)
-		}
-		switch m.Menu.Choice {
-		case "Auto-Playlist":
-			fmt.Println("Playlist")
-		case "Playlist Selection":
-			fmt.Println("Playlist menu")
-		case "Folder Navigation":
-			fmt.Println("folder nav!")
-		}
-		// TODO can we unify these components? Right now they are running as separate programs
-		// https://leg100.github.io/en/posts/building-bubbletea-programs/
-		// TODO This is not the final implementation:
-		m.Player.TrackPath = "/home/sameary/Code/music-efx/sample/Test.mp3"
-		player.PlayUI(m.Player)
+	m := app.NewAppModel(mainMenuItems, title)
+	p := tea.NewProgram(m, tea.WithAltScreen())
+
+	if _, err := p.Run(); err != nil {
+		panic(err)
 	}
 }

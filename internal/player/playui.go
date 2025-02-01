@@ -2,7 +2,6 @@ package player
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -19,43 +18,45 @@ const (
 
 var helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).Render
 
-func PlayUI(m *PlayerModel) {
-	fileName := filepath.Base(m.TrackPath)
-	m.progress = progress.New(progress.WithDefaultGradient())
-	m.title = strings.TrimSuffix(fileName, filepath.Ext(fileName))
-	m.player = &Player{}
-	m.stopChan = make(chan bool)
-	m.progress.ShowPercentage = false
-
-	trk, _ := LoadTrack(m.TrackPath)
-	m.timeRemaining = trk.Length
-	m.player.PlayTrack(trk)
-
-	if _, err := tea.NewProgram(m).Run(); err != nil {
-		fmt.Println("Oh no!", err)
-		os.Exit(1)
-	}
-}
-
-type tickMsg time.Time
+type TickMsg time.Time
 
 type PlayerModel struct {
 	TrackPath     string
 	progress      progress.Model
 	player        *Player
-	stopChan      chan bool
+	Stopped       bool
 	title         string
 	timeRemaining time.Duration
 }
 
+func (m *PlayerModel) StartTrack() {
+	// Set up the track and start playing
+	fileName := filepath.Base(m.TrackPath)
+	m.progress = progress.New(progress.WithDefaultGradient())
+	m.title = strings.TrimSuffix(fileName, filepath.Ext(fileName))
+	m.player = &Player{}
+	m.Stopped = false
+	m.progress.ShowPercentage = false
+
+	trk, _ := LoadTrack(m.TrackPath)
+	m.timeRemaining = trk.Length
+	m.player.PlayTrack(trk)
+}
+
 func (m PlayerModel) Init() tea.Cmd {
-	return tea.Batch(tickCmd(), tea.ClearScreen)
+	return nil
 }
 
 func (m PlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		return m, tea.Quit
+		switch keypress := msg.String(); keypress {
+		case "ctrl+c", "esc":
+			m.player.Stop()
+			m.Stopped = true
+			return m, nil
+		}
+		return m, nil
 
 	case tea.WindowSizeMsg:
 		m.progress.Width = msg.Width - padding*2 - 4
@@ -64,7 +65,7 @@ func (m PlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case tickMsg:
+	case TickMsg:
 		if m.progress.Percent() == 1.0 {
 			return m, tea.Quit
 		}
@@ -72,7 +73,6 @@ func (m PlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		position := float64(m.player.track.Stream.Position()) / float64(m.player.track.Format.SampleRate)
 		total := float64(m.player.track.Stream.Len()) / float64(m.player.track.Format.SampleRate)
 
-		// Calculate the progress percentage
 		progress := position / total
 		cmd := m.progress.SetPercent(progress)
 		m.timeRemaining = time.Duration((total - position) * float64(time.Second))
@@ -108,6 +108,6 @@ func (m PlayerModel) View() string {
 
 func tickCmd() tea.Cmd {
 	return tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
-		return tickMsg(t)
+		return TickMsg(t)
 	})
 }
