@@ -67,7 +67,7 @@ func (m PlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case TickMsg:
 		if m.progress.Percent() == 1.0 {
-			return m, tea.Quit
+			return m, nil
 		}
 
 		position := float64(m.player.track.Stream.Position()) / float64(m.player.track.Format.SampleRate)

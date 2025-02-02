@@ -2,8 +2,6 @@ package files
 
 import (
 	"errors"
-	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -14,11 +12,9 @@ import (
 type FileModel struct {
 	filepicker   filepicker.Model
 	selectedFile string
-	quitting     bool
+	Quitting     bool
 	err          error
 }
-
-// TODO This needs to be integrated into the global event loop
 
 type clearErrorMsg struct{}
 
@@ -37,13 +33,12 @@ func (m FileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
-			m.quitting = true
-			return m, tea.Quit
+			m.Quitting = true
+			return m, nil
 		}
 	case clearErrorMsg:
 		m.err = nil
 	}
-
 	var cmd tea.Cmd
 	m.filepicker, cmd = m.filepicker.Update(msg)
 
@@ -66,7 +61,7 @@ func (m FileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m FileModel) View() string {
-	if m.quitting {
+	if m.Quitting {
 		return ""
 	}
 	var s strings.Builder
@@ -82,15 +77,27 @@ func (m FileModel) View() string {
 	return s.String()
 }
 
-func main() {
+func InitFilePicker(fileType string, startingDir string, dirAllowed bool) FileModel {
 	fp := filepicker.New()
-	fp.AllowedTypes = []string{".mod", ".sum", ".go", ".txt", ".md"}
-	fp.CurrentDirectory, _ = os.UserHomeDir()
-
-	m := FileModel{
+	fp.AllowedTypes = []string{fileType}
+	fp.DirAllowed = dirAllowed
+	fp.CurrentDirectory = startingDir
+	fp.ShowPermissions = false
+	return FileModel{
 		filepicker: fp,
 	}
+}
+
+/*
+func main() {
+	m := InitFilePicker(".mp3", "/home", false)
 	tm, _ := tea.NewProgram(&m).Run()
 	mm := tm.(FileModel)
 	fmt.Println("\n  You selected: " + m.filepicker.Styles.Selected.Render(mm.selectedFile) + "\n")
-}
+}*/
+
+/*
+tm, _ := tea.NewProgram(&m).Run()
+mm := tm.(FileModel)
+fmt.Println("\n  You selected: " + m.filepicker.Styles.Selected.Render(mm.selectedFile) + "\n")
+*/
