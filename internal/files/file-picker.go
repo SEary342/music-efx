@@ -11,7 +11,7 @@ import (
 
 type FileModel struct {
 	filepicker   filepicker.Model
-	selectedFile string
+	SelectedFile string
 	Quitting     bool
 	err          error
 }
@@ -45,7 +45,7 @@ func (m FileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Did the user select a file?
 	if didSelect, path := m.filepicker.DidSelectFile(msg); didSelect {
 		// Get the path of the selected file.
-		m.selectedFile = path
+		m.SelectedFile = path
 	}
 
 	// Did the user select a disabled file?
@@ -53,7 +53,7 @@ func (m FileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if didSelect, path := m.filepicker.DidSelectDisabledFile(msg); didSelect {
 		// Let's clear the selectedFile and display an error.
 		m.err = errors.New(path + " is not valid.")
-		m.selectedFile = ""
+		m.SelectedFile = ""
 		return m, tea.Batch(cmd, clearErrorAfter(2*time.Second))
 	}
 
@@ -68,10 +68,10 @@ func (m FileModel) View() string {
 	s.WriteString("\n  ")
 	if m.err != nil {
 		s.WriteString(m.filepicker.Styles.DisabledFile.Render(m.err.Error()))
-	} else if m.selectedFile == "" {
+	} else if m.SelectedFile == "" {
 		s.WriteString("Pick a file:")
 	} else {
-		s.WriteString("Selected file: " + m.filepicker.Styles.Selected.Render(m.selectedFile))
+		s.WriteString("Selected file: " + m.filepicker.Styles.Selected.Render(m.SelectedFile))
 	}
 	s.WriteString("\n\n" + m.filepicker.View() + "\n")
 	return s.String()
@@ -83,6 +83,8 @@ func InitFilePicker(fileType string, startingDir string, dirAllowed bool) FileMo
 	fp.DirAllowed = dirAllowed
 	fp.CurrentDirectory = startingDir
 	fp.ShowPermissions = false
+	fp.Height = 10
+	fp.ShowSize = false
 	return FileModel{
 		filepicker: fp,
 	}

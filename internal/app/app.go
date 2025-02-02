@@ -29,7 +29,7 @@ type Model struct {
 }
 
 func NewAppModel(title string) Model {
-	pwd, _ := os.UserHomeDir()
+	pwd, _ := os.Getwd()
 
 	return Model{
 		Global:      &GlobalModel{CurrentView: "menu", SharedData: make(map[string]interface{})},
@@ -86,6 +86,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.TrackPicker.Quitting {
 			m.TrackPicker.Quitting = false
 			m.Global.CurrentView = "menu"
+		} else if len(m.TrackPicker.SelectedFile) > 0 {
+			m.Global.CurrentView = "player"
+			m.Player.TrackPath = m.TrackPicker.SelectedFile
+			m.Player.StartTrack()
+			tpCmd = tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
+				return player.TickMsg(t)
+			})
 		}
 		cmd = tpCmd
 	}
