@@ -86,7 +86,7 @@ func TestLoadConfig(t *testing.T) {
 				tmpFilePath = "/non-existent-file.yaml"
 			}
 
-			gotData, err := loadConfig(tmpFilePath)
+			gotData, err := LoadConfig(tmpFilePath)
 			if (err != nil) != tt.expectError {
 				t.Errorf("LoadConfig() error = %v, expectError %v", err, tt.expectError)
 			}

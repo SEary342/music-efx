@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func loadConfig(configPath string) (*[]model.PlaylistData, error) {
+func LoadConfig(configPath string) (*[]model.PlaylistData, error) {
 	data, err := os.ReadFile(configPath) // Replace with your file's path
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
@@ -43,7 +43,7 @@ func LoadPlaylistYaml() []model.PlaylistData {
 	}
 
 	for _, file := range yamlPaths {
-		cfgYaml, err := loadConfig(file)
+		cfgYaml, err := LoadConfig(file)
 		if err != nil {
 			fmt.Printf("Unable to load playlist from: %s\n", file)
 			continue
