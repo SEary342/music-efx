@@ -3,12 +3,11 @@ package player
 import (
 	"fmt"
 	"os"
-	"sync"
 	"time"
 
-	"github.com/faiface/beep"
-	"github.com/faiface/beep/mp3"
-	"github.com/faiface/beep/speaker"
+	"github.com/gopxl/beep/v2"
+	"github.com/gopxl/beep/v2/mp3"
+	"github.com/gopxl/beep/v2/speaker"
 )
 
 type Track struct {
@@ -41,16 +40,14 @@ func (t *Track) Close() {
 }
 
 type Player struct {
-	mu       sync.Mutex
-	playing  bool
-	stopping bool
-	track    *Track
+	playing bool
+	ctrl    *beep.Ctrl
+	track   *Track
 }
 
-// PlayTrack starts playing a track in a non-blocking manner.
 func (p *Player) PlayTrack(track *Track) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	speaker.Lock()
+	defer speaker.Unlock()
 
 	if p.playing {
 		fmt.Println("Already playing a track. Stop it first.")
@@ -58,38 +55,33 @@ func (p *Player) PlayTrack(track *Track) {
 	}
 
 	p.track = track
-	p.stopping = false
 	p.playing = true
 
 	// Initialize the speaker with the track's format
 	speaker.Init(track.Format.SampleRate, track.Format.SampleRate.N(time.Second/10))
 
 	// Create a control streamer to manage playback
-	ctrl := &beep.Ctrl{Streamer: track.Stream, Paused: false}
+	p.ctrl = &beep.Ctrl{Streamer: track.Stream, Paused: false}
 
-	// Start playing the track
 	go func() {
-		speaker.Play(beep.Seq(ctrl, beep.Callback(func() {
+		speaker.Play(beep.Seq(p.ctrl, beep.Callback(func() {
 			// Callback when the track ends
-			p.mu.Lock()
+			speaker.Lock()
 			p.playing = false
-			p.mu.Unlock()
+			speaker.Unlock()
 		})))
 	}()
 }
 
 // Stop stops the currently playing track.
 func (p *Player) Stop() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	speaker.Lock()
+	defer speaker.Unlock()
 
 	if !p.playing {
 		return
 	}
-
-	p.stopping = true
-	speaker.Clear()
-	p.track.Stream.Seek(0)
+	p.ctrl.Paused = true
 	p.playing = false
 	p.track.Close()
 }

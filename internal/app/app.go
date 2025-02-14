@@ -89,6 +89,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else if len(m.TrackPicker.SelectedFile) > 0 {
 			m.Global.CurrentView = "player"
 			m.Player.TrackPath = m.TrackPicker.SelectedFile
+			m.TrackPicker.SelectedFile = ""
 			m.Player.StartTrack()
 			tpCmd = tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
 				return player.TickMsg(t)
