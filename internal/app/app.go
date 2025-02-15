@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"music-efx/internal/config"
 	"music-efx/internal/files"
 	"music-efx/internal/menu"
 	"music-efx/internal/player"
@@ -35,10 +36,11 @@ func NewAppModel(title string) Model {
 	pwd, _ := os.Getwd()
 
 	return Model{
-		Global:      &GlobalModel{CurrentView: "menu", SharedData: make(map[string]interface{})},
-		Menu:        menu.New(mainMenuItems, title, false, false),
-		Player:      player.PlayerModel{},
-		TrackPicker: files.InitFilePicker(".mp3", pwd, false),
+		Global:         &GlobalModel{CurrentView: "menu", SharedData: make(map[string]interface{})},
+		Menu:           menu.New(mainMenuItems, title, false, false),
+		Player:         player.PlayerModel{},
+		TrackPicker:    files.InitFilePicker(".mp3", pwd, false),
+		PlaylistPicker: files.InitFilePicker(".yaml", pwd, false),
 	}
 }
 
@@ -68,9 +70,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = tpCmd
 		case "Playlist Selection":
 			m.Menu.Choice = ""
+			m.Global.CurrentView = "playlist-picker"
+			updatedPicker, tpCmd := m.PlaylistPicker.Update(m.PlaylistPicker.Init()())
+			m.PlaylistPicker = updatedPicker.(files.FileModel)
+			cmd = tpCmd
 		case "Auto-Playlist":
 			m.Menu.Choice = ""
 			m.Global.CurrentView = "player"
+			playlists := config.LoadPlaylistYaml()
+			mp3Meta, err := playlist.LoadPlaylist(m.PlaylistPicker.SelectedFile)
+			if err != nil {
+				fmt.Println(err)
+				m.Global.CurrentView = "menu"
+			}
+			m.PlaylistPicker.SelectedFile = ""
+			m.Player = *playlist.RandomPlay(mp3Meta, &m.Player)
 		}
 
 	case "player":
@@ -110,7 +124,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				fmt.Println(err)
 				m.Global.CurrentView = "menu"
 			}
-			playlist.RandomPlay(mp3Meta, m.Player)
+			m.PlaylistPicker.SelectedFile = ""
+			m.Player = *playlist.RandomPlay(mp3Meta, &m.Player)
 			tpCmd = tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
 				return player.TickMsg(t)
 			})
@@ -129,6 +144,8 @@ func (m Model) View() string {
 		return m.Player.View()
 	case "track-picker":
 		return m.TrackPicker.View()
+	case "playlist-picker":
+		return m.PlaylistPicker.View()
 	default:
 		return "Unknown view"
 	}
