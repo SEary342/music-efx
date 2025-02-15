@@ -12,7 +12,7 @@ import (
 )
 
 func ExtractMetadata(file string) (model.MP3Metadata, error) {
-	track, err := player.LoadTrack(file)
+	track, err := player.LoadTrack(file, true)
 	if err != nil {
 		return model.MP3Metadata{}, err
 	}

@@ -23,24 +23,25 @@ type TickMsg time.Time
 type PlayerModel struct {
 	TrackPath     string
 	progress      progress.Model
-	player        *Player
+	Player        *Player
 	Stopped       bool
 	title         string
 	timeRemaining time.Duration
 }
 
-func (m *PlayerModel) StartTrack() {
+func (m *PlayerModel) StartTrack() *PlayerModel {
 	// Set up the track and start playing
 	fileName := filepath.Base(m.TrackPath)
 	m.progress = progress.New(progress.WithDefaultGradient())
 	m.title = strings.TrimSuffix(fileName, filepath.Ext(fileName))
-	m.player = &Player{}
+	trk, _ := LoadTrack(m.TrackPath, false)
+	m.Player = &Player{track: trk}
 	m.Stopped = false
 	m.progress.ShowPercentage = false
 
-	trk, _ := LoadTrack(m.TrackPath)
 	m.timeRemaining = trk.Length
-	m.player.PlayTrack(trk)
+	m.Player.PlayTrack()
+	return m
 }
 
 func (m PlayerModel) Init() tea.Cmd {
@@ -52,7 +53,7 @@ func (m PlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
 		case "ctrl+c", "esc":
-			m.player.Stop()
+			m.Player.Stop()
 			m.Stopped = true
 			return m, nil
 		}
@@ -69,13 +70,15 @@ func (m PlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.progress.Percent() == 1.0 {
 			return m, nil
 		}
+		var cmd tea.Cmd
+		if m.Player != nil && m.Player.track != nil {
+			position := float64(m.Player.track.Stream.Position()) / float64(m.Player.track.Format.SampleRate)
+			total := float64(m.Player.track.Stream.Len()) / float64(m.Player.track.Format.SampleRate)
 
-		position := float64(m.player.track.Stream.Position()) / float64(m.player.track.Format.SampleRate)
-		total := float64(m.player.track.Stream.Len()) / float64(m.player.track.Format.SampleRate)
-
-		progress := position / total
-		cmd := m.progress.SetPercent(progress)
-		m.timeRemaining = time.Duration((total - position) * float64(time.Second))
+			progress := position / total
+			cmd = m.progress.SetPercent(progress)
+			m.timeRemaining = time.Duration((total - position) * float64(time.Second))
+		}
 		return m, tea.Batch(tickCmd(), cmd)
 
 	case progress.FrameMsg:

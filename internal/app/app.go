@@ -1,8 +1,8 @@
 package app
 
 import (
+	"context"
 	"fmt"
-	"music-efx/internal/config"
 	"music-efx/internal/files"
 	"music-efx/internal/menu"
 	"music-efx/internal/player"
@@ -22,6 +22,8 @@ var mainMenuItems = []menu.MenuItem{
 type GlobalModel struct {
 	CurrentView string
 	SharedData  map[string]interface{}
+	Context     context.Context
+	CancelFunc  context.CancelFunc
 }
 
 type Model struct {
@@ -35,8 +37,10 @@ type Model struct {
 func NewAppModel(title string) Model {
 	pwd, _ := os.Getwd()
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	return Model{
-		Global:         &GlobalModel{CurrentView: "menu", SharedData: make(map[string]interface{})},
+		Global:         &GlobalModel{CurrentView: "menu", SharedData: make(map[string]interface{}), Context: ctx, CancelFunc: cancel},
 		Menu:           menu.New(mainMenuItems, title, false, false),
 		Player:         player.PlayerModel{},
 		TrackPicker:    files.InitFilePicker(".mp3", pwd, false),
@@ -58,6 +62,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = menuCmd
 
 		if m.Menu.Exiting {
+			m.Global.CancelFunc() // Cancel the context when exiting the app
 			return m, tea.Quit
 		}
 
@@ -77,14 +82,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "Auto-Playlist":
 			m.Menu.Choice = ""
 			m.Global.CurrentView = "player"
-			playlists := config.LoadPlaylistYaml()
-			mp3Meta, err := playlist.LoadPlaylist(m.PlaylistPicker.SelectedFile)
-			if err != nil {
-				fmt.Println(err)
-				m.Global.CurrentView = "menu"
-			}
-			m.PlaylistPicker.SelectedFile = ""
-			m.Player = *playlist.RandomPlay(mp3Meta, &m.Player)
+			m.Player = *playlist.StartAutoPlaylist(m.Global.Context, &m.Player)
 		}
 
 	case "player":
@@ -92,6 +90,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Player = updatedPlayer.(player.PlayerModel)
 		if m.Player.Stopped {
 			m.Global.CurrentView = "menu"
+			m.Global.CancelFunc() // Cancel the context when playback is stopped
+			ctx, cancel := context.WithCancel(context.Background())
+			m.Global.Context = ctx
+			m.Global.CancelFunc = cancel
 		}
 		cmd = playerCmd
 
@@ -125,7 +127,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.Global.CurrentView = "menu"
 			}
 			m.PlaylistPicker.SelectedFile = ""
-			m.Player = *playlist.RandomPlay(mp3Meta, &m.Player)
+			m.Player = *playlist.RandomPlay(m.Global.Context, mp3Meta, &m.Player)
 			tpCmd = tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
 				return player.TickMsg(t)
 			})

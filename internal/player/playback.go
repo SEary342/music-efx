@@ -18,8 +18,11 @@ type Track struct {
 }
 
 // LoadTrack loads an MP3 file, extracts its length, and prepares it for playback.
-func LoadTrack(path string) (*Track, error) {
+func LoadTrack(path string, close bool) (*Track, error) {
 	file, err := os.Open(path)
+	if close {
+		defer file.Close()
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
@@ -45,7 +48,7 @@ type Player struct {
 	track   *Track
 }
 
-func (p *Player) PlayTrack(track *Track) {
+func (p *Player) PlayTrack() {
 	speaker.Lock()
 	defer speaker.Unlock()
 
@@ -53,15 +56,13 @@ func (p *Player) PlayTrack(track *Track) {
 		fmt.Println("Already playing a track. Stop it first.")
 		return
 	}
-
-	p.track = track
 	p.playing = true
 
 	// Initialize the speaker with the track's format
-	speaker.Init(track.Format.SampleRate, track.Format.SampleRate.N(time.Second/10))
+	speaker.Init(p.track.Format.SampleRate, p.track.Format.SampleRate.N(time.Second/10))
 
 	// Create a control streamer to manage playback
-	p.ctrl = &beep.Ctrl{Streamer: track.Stream, Paused: false}
+	p.ctrl = &beep.Ctrl{Streamer: p.track.Stream, Paused: false}
 
 	go func() {
 		speaker.Play(beep.Seq(p.ctrl, beep.Callback(func() {
@@ -78,7 +79,7 @@ func (p *Player) Stop() {
 	speaker.Lock()
 	defer speaker.Unlock()
 
-	if !p.playing {
+	if p == nil || !p.playing {
 		return
 	}
 	p.ctrl.Paused = true

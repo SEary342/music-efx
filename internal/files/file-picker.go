@@ -89,17 +89,3 @@ func InitFilePicker(fileType string, startingDir string, dirAllowed bool) FileMo
 		filepicker: fp,
 	}
 }
-
-/*
-func main() {
-	m := InitFilePicker(".mp3", "/home", false)
-	tm, _ := tea.NewProgram(&m).Run()
-	mm := tm.(FileModel)
-	fmt.Println("\n  You selected: " + m.filepicker.Styles.Selected.Render(mm.selectedFile) + "\n")
-}*/
-
-/*
-tm, _ := tea.NewProgram(&m).Run()
-mm := tm.(FileModel)
-fmt.Println("\n  You selected: " + m.filepicker.Styles.Selected.Render(mm.selectedFile) + "\n")
-*/
