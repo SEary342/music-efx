@@ -104,36 +104,48 @@ func StartAutoPlaylist(ctx context.Context, m *player.PlayerModel) *player.Playe
 		mp3MetaMap[lst.Name] = mp3Meta
 	}
 
-	for _, lst := range playlistMeta {
-		duration := int(time.Until(lst.End.Time).Seconds())
-		if duration <= 0 {
-			continue
-		}
+	// Create a channel to receive the updated PlayerModel
+	updatedModelCh := make(chan *player.PlayerModel)
 
-		// Stop the currently playing track, if any
-		m.Player.Stop()
+	go func() {
+		defer close(updatedModelCh) // Close the channel when the goroutine finishes
+		for _, lst := range playlistMeta {
+			duration := int(time.Until(lst.End.Time).Seconds())
+			if duration <= 0 {
+				continue
+			}
 
-		// Generate and play the playlist
-		select {
-		case <-ctx.Done():
-			fmt.Println("Context canceled, stopping auto-playlist.")
+			// Stop the currently playing track, if any
 			m.Player.Stop()
-			return m
-		default:
-			// Call GenerateAndPlay and get the updated PlayerModel
-			m = GenerateAndPlay(ctx, mp3MetaMap[lst.Name], duration, m)
-		}
 
-		// Wait for the duration or context cancellation
-		select {
-		case <-ctx.Done():
-			fmt.Println("Context canceled during wait.")
-			m.Player.Stop()
-			return m
-		case <-time.After(time.Duration(duration) * time.Second):
-			// Continue to the next playlist after the duration
+			// Generate and play the playlist
+			select {
+			case <-ctx.Done():
+				fmt.Println("Context canceled, stopping auto-playlist.")
+				m.Player.Stop()
+				return
+			default:
+				// Call GenerateAndPlay and update PlayerModel
+				m = GenerateAndPlay(ctx, mp3MetaMap[lst.Name], duration, m)
+				// Send the updated model back through the channel
+				updatedModelCh <- m
+			}
+
+			// Wait for the duration or context cancellation
+			select {
+			case <-ctx.Done():
+				fmt.Println("Context canceled during wait.")
+				m.Player.Stop()
+				return
+			case <-time.After(time.Duration(duration) * time.Second):
+				// Continue to the next playlist after the duration
+			}
 		}
+	}()
+
+	// Listen for updates to the PlayerModel in the main goroutine
+	for updatedModel := range updatedModelCh {
+		return updatedModel
 	}
-
 	return m
 }

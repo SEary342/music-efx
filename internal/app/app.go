@@ -83,6 +83,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Menu.Choice = ""
 			m.Global.CurrentView = "player"
 			m.Player = *playlist.StartAutoPlaylist(m.Global.Context, &m.Player)
+			cmd = tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
+				return player.TickMsg(t)
+			})
 		}
 
 	case "player":
