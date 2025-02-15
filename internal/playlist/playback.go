@@ -49,41 +49,57 @@ func playPlaylist(ctx context.Context, playlist []model.MP3Metadata, playerModel
 		return playerModel
 	}
 
-	// Start the first track synchronously to capture the updated player model.
+	// Create a channel to receive updates
+	playerModelChan := make(chan *player.PlayerModel)
+
+	// Start the first track synchronously
 	playerModel.TrackPath = playlist[0].Path
 	updatedPlayer := playerModel.StartTrack()
 
-	// Schedule the remaining tracks asynchronously.
+	// Start the playback loop asynchronously
 	go func() {
 		time.Sleep(playlist[0].Length)
-		playNextTrack(ctx, 1, playlist, updatedPlayer)
+		playNextTrack(ctx, 1, playlist, updatedPlayer, playerModelChan)
 	}()
+
+	// Listen for updates from the channel
+	go func() {
+		for updated := range playerModelChan {
+			// Update the player model based on feedback
+			playerModel = updated
+		}
+	}()
+
 	return updatedPlayer
 }
 
-func playNextTrack(ctx context.Context, i int, playlist []model.MP3Metadata, playerModel *player.PlayerModel) {
+func playNextTrack(ctx context.Context, i int, playlist []model.MP3Metadata, playerModel *player.PlayerModel, playerModelChan chan *player.PlayerModel) {
 	// Exit if we've reached the end of the playlist, playback has been stopped, or context is canceled.
 	if i >= len(playlist) || playerModel.Stopped {
+		close(playerModelChan) // Close the channel when playback ends
 		return
 	}
 	select {
 	case <-ctx.Done():
+		close(playerModelChan)
 		return
 	default:
 	}
 
-	// Set and start the current track.
+	// Set and start the current track
 	playerModel.TrackPath = playlist[i].Path
 	updatedPlayer := playerModel.StartTrack()
 
-	// Schedule the next track.
+	// Send the updated model to the channel
+	playerModelChan <- updatedPlayer
+
+	// Schedule the next track
 	go func(trackDuration time.Duration, nextPlayer *player.PlayerModel) {
 		time.Sleep(trackDuration)
-		playNextTrack(ctx, i+1, playlist, nextPlayer)
+		playNextTrack(ctx, i+1, playlist, nextPlayer, playerModelChan)
 	}(playlist[i].Length, updatedPlayer)
 }
 
-// TODO this isn't working right
 func StartAutoPlaylist(ctx context.Context, m *player.PlayerModel) *player.PlayerModel {
 	playlists := config.LoadPlaylistYaml()
 	playlistMeta := make([]model.PlaylistData, len(playlists))
