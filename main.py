@@ -1,11 +1,14 @@
-from pathlib import Path
+import importlib
+import importlib.metadata
 import random
+import threading
+import time
+from pathlib import Path
+
 import pygame
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Tree, Static, Button, Footer, Header, ProgressBar
-import time
-import threading
+from textual.widgets import Button, Footer, Header, ProgressBar, Static, Tree
 
 
 class MusicEFX(App):
@@ -35,6 +38,7 @@ class MusicEFX(App):
 
     def __init__(self, root_folder: Path, **kwargs):
         super().__init__(**kwargs)
+        self.title = f"MusicEFX {importlib.metadata.version("music-efx")}"
         self.root_folder = root_folder
         self.current_playlist = []
         self.current_index = 0

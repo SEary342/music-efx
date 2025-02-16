@@ -1,0 +1,12 @@
+[Desktop Entry]
+Categories=Utility;
+Comment[en_US]=Run MusicEFX in a Terminal
+Comment=Run MusicEFX in a Terminal
+Exec=ghostty -e music-efx
+Icon=https://raw.githubusercontent.com/SEary342/music-efx/refs/heads/main/logo.png
+Name[en_US]=MusicEFX
+Name=MusicEFX
+StartupNotify=true
+Terminal=false
+Type=Application
+Version=0.0.3

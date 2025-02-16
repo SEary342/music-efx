@@ -60,15 +60,13 @@ python main.py
 
 ### Build the Application
 
-To build the application, use the following commands:
+To build the application, use the following commands (`uv` needs to be installed):
 
 ```bash
-uv build
-
-# Set the applicable environment variables: https://ofek.dev/pyapp/latest/examples/#custom-embedded-local-distribution
-
-# Follow the pyapp instructions: https://ofek.dev/pyapp/latest/how-to/
+make all
 ```
+
+Deploy the `dist/music-efx` file to your PATH location of choice.
 
 ## License
 
