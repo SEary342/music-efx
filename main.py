@@ -122,14 +122,17 @@ class MusicEFX(App):
             while self.is_playing and pygame.mixer.music.get_busy():
                 elapsed = time.time() - self.start_time
                 remaining_time = self.song_length - elapsed
-                progress_bar.progress = min(int(elapsed), int(self.song_length))
+                progress_bar.total = 100
+                current_step = int((elapsed / self.song_length) * 100)
+                progress_bar.progress = min(max(current_step, 0), 100)
 
                 # Update ETA display
                 minutes, seconds = divmod(int(remaining_time), 60)
                 eta_display.update(f"{minutes:02}:{seconds:02}")
 
                 time.sleep(0.5)
-            self.next_song()
+            if not self.is_paused and self.is_playing:
+                self.call_later(self.next_song)
 
         if self.progress_thread and self.progress_thread.is_alive():
             return
