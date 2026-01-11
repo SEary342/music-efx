@@ -49,7 +49,7 @@ class MusicEFX(App):
         self.song_length = 0
         self.progress_thread = None
         self.start_time = 0  # Track start time for ETA calculation
-        pygame.mixer.init()
+        pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=4096)
 
     def compose(self) -> ComposeResult:
         yield Header()
