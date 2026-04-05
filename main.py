@@ -9,6 +9,7 @@ import pygame
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, Footer, Header, ProgressBar, Static, Tree
+from textual.widgets.tree import TreeNode
 
 
 class MusicEFX(App):
@@ -84,6 +85,18 @@ class MusicEFX(App):
             elif item.suffix.lower() in [".mp3", ".wav", ".ogg"]:
                 node.add_leaf(item.name, data=str(item))
 
+    @staticmethod
+    def find_and_select(node: TreeNode, song_path: str, tree: Tree) -> bool:
+        if node.data == str(song_path):
+            tree.select_node(node)
+            tree.scroll_to_node(node)
+            return True
+        
+        for child in node.children:
+            if MusicEFX.find_and_select(child, song_path, tree):
+                return True
+        return False
+
     def play_song(self):
         """Play the current song."""
         if self.current_playlist:
@@ -103,9 +116,8 @@ class MusicEFX(App):
 
             # Highlight the current song in the file picker
             tree = self.query_one("#folder_tree", Tree)
-            for node in tree.query():
-                if node.data == str(song_path):
-                    node.highlight()
+            if tree.root:
+                self.find_and_select(tree.root, song_path, tree)
 
     def reset_progress_bar(self):
         """Reset the progress bar to its initial state."""
@@ -200,7 +212,7 @@ class MusicEFX(App):
 
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
         """Handle folder or file selection in the tree."""
-        selected_path = Path(event.node.data)
+        selected_path = Path(event.node.data)  # ty:ignore[invalid-argument-type]
         self.enable_buttons()
         if selected_path.is_dir():
             self.current_playlist = [str(f) for f in selected_path.glob("*.mp3")]
@@ -215,7 +227,7 @@ class MusicEFX(App):
 
     def enable_buttons(self) -> None:
         if self.current_playlist:
-            buttons: list[Button] = self.query(".btn")
+            buttons = self.query(".btn")
             for btn in buttons:
                 if btn.id == "prev_button" and len(self.played_items) <= 1:
                     btn.disabled = True
