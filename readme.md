@@ -1,72 +1,62 @@
-<img src="logoBig.png" alt="MusicEFX Logo" width="200" height="200">
-
 # MusicEFX
 
-A terminal-based MP3 player built with Python. MusicEFX allows users to navigate directories, select MP3 files, and play them directly from the terminal. With a simple TUI interface, the app offers playlist management, folder navigation, search functionality, and playback controls.
+MusicEFX is a terminal-based MP3 player built with Python and Textual. It lets you browse music folders, build a playlist from a selected directory, and control playback from a keyboard-driven TUI.
 
 ## Features
 
-- **Main Menu Navigation**: Navigate through different sections such as Auto-Playlist, Playlists, Folder Navigation, and Search.
-- **Folder Navigation**: Browse through directories to find MP3 files.
-- **Playlist Management**: Access existing playlists and play MP3 files from them.
-- **Playback Control**: Select an MP3 file to play, stop playback, and navigate through options.
-- **Folder/Directory** Navigation: Navigate nested directories to select and play MP3 files.
-  
-## Prerequisites
+- Browse local folders and pick audio files
+- Build a playlist from a selected folder
+- Play, pause, stop, previous/next, random, and reroll controls
+- Keyboard shortcuts for quick control: Space (play/pause), s (stop), p (previous), n (next), and r (toggle random)
 
-Before running the app, you will need:
-- A terminal environment for interacting with the TUI (Text User Interface).
+## Requirements
 
-## Usage
+- Python 3.14+
+- [uv](https://docs.astral.sh/uv/)
 
-### Running the Application
-
-Download the release from GitHub and run the app by specifying a directory path containing MP3 files:
-
-**Linux:**
-```bash
-./music-efx
-```
-
-#### Stopping Playback
-
-To stop the playback of a song, press `s`.
-
-## Source Installation
-
-### Clone the Repository
-
-First, clone the repository to your local machine:
+## Development setup
 
 ```bash
 git clone https://github.com/seary342/music-efx.git
 cd music-efx
+uv sync --group dev
 ```
 
-### Install Dependencies
+## Run the app
 
-Make sure you have [uv](https://docs.astral.sh/uv/) available and run the following command
+From the repository root, start the TUI with:
 
 ```bash
-uv run main.py
+uv run src/music_efx
 ```
 
-Alternatively, you can pip install and run the main.py:
+## Development commands
+
+The project uses Taskipy for common workflows:
 
 ```bash
-pip install .
-python main.py
+uv run task test
+uv run task lint
+uv run task format
+uv run task build
 ```
 
-### Build the Application
-
-To build the application, use the following commands (`uv` needs to be installed):
+Useful maintenance commands:
 
 ```bash
-make all
+uv run task check
+uv run task clean
 ```
 
-Deploy the `dist/music-efx` file to your PATH location of choice.
+## Build
+
+To build a standalone application with PyInstaller, run:
+
+```bash
+uv run task build
+```
+
+The packaged binary is written to the dist directory.
 
 ## License
 
