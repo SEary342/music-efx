@@ -19,6 +19,23 @@ class MusicEFXData:
         """Returns the label and path for the root folder."""
         return self.root_folder.name, str(self.root_folder)
 
+    @staticmethod
+    def format_song_name(item: Path) -> str:
+        """Format the song path into a neat display label."""
+        original_label = item.stem
+        label = re.sub(r"^[^a-zA-Z]+", "", original_label)
+        if not label:
+            label = original_label
+
+        try:
+            tag = TinyTag.get(str(item))
+            if tag.duration:
+                minutes, seconds = divmod(int(tag.duration), 60)
+                label = f"{label} [{minutes}:{seconds:02}]"
+        except Exception:
+            pass
+        return label
+
     def get_children(self, folder_path: str) -> Iterator[tuple[str, str, bool]]:
         """
         Yields (label, path, is_dir) for a given folder.
@@ -33,19 +50,7 @@ class MusicEFXData:
             if item.is_dir():
                 items.append((item.name, str(item), True))
             elif item.suffix.lower() in AUDIO_FORMATS:
-                original_label = item.stem
-
-                label = re.sub(r"^[^a-zA-Z]+", "", original_label)
-                if not label:
-                    label = original_label
-
-                try:
-                    tag = TinyTag.get(str(item))
-                    if tag.duration:
-                        minutes, seconds = divmod(int(tag.duration), 60)
-                        label = f"{label} [{minutes}:{seconds:02}]"
-                except Exception:
-                    pass
+                label = MusicEFXData.format_song_name(item)
                 items.append((label, str(item), False))
 
         # Sort alphabetically (case-insensitive), keeping directories at the top

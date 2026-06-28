@@ -23,10 +23,6 @@ class MusicEFX(App):
             height: 70%;
         }
 
-        .pressed {
-            background: blue 80%;
-        }
-
         #controls {
             align-vertical: bottom;
         }
@@ -64,6 +60,7 @@ class MusicEFX(App):
             yield Button("Previous", id="prev_button", disabled=True, classes="btn")
             yield Button("Next", id="next_button", disabled=True, classes="btn")
             yield Button("Random", id="random_button", disabled=True, classes="btn")
+            yield Button("Re-roll", id="reroll_button", disabled=True, classes="btn")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -74,17 +71,25 @@ class MusicEFX(App):
         """Handle folder or file selection in the tree."""
         if not event.node.data:
             return
-            
+
         selected_path = Path(event.node.data)
-        
+
         if selected_path.is_dir():
-            tracks = [f for f in sorted(selected_path.glob("*")) if f.is_file() and f.suffix.lower() in [".mp3", ".wav", ".ogg"]]
+            tracks = [
+                f
+                for f in sorted(selected_path.glob("*"))
+                if f.is_file() and f.suffix.lower() in [".mp3", ".wav", ".ogg"]
+            ]
             if tracks:
                 self.playlist.set_playlist(tracks)
                 self.playlist.player.stop()
                 self._manually_stopped = True
         elif selected_path.suffix.lower() in [".mp3", ".wav", ".ogg"]:
-            tracks = [f for f in sorted(selected_path.parent.glob("*")) if f.is_file() and f.suffix.lower() in [".mp3", ".wav", ".ogg"]]
+            tracks = [
+                f
+                for f in sorted(selected_path.parent.glob("*"))
+                if f.is_file() and f.suffix.lower() in [".mp3", ".wav", ".ogg"]
+            ]
             self.playlist.set_playlist(tracks)
             try:
                 idx = tracks.index(selected_path)
@@ -92,7 +97,7 @@ class MusicEFX(App):
                 idx = 0
             self.playlist.play_playlist(idx)
             self._manually_stopped = False
-            
+
         self._update_ui()
 
     def _update_ui(self) -> None:
@@ -100,19 +105,40 @@ class MusicEFX(App):
         song_status = self.query_one("#song_status", Static)
         progress_bar = self.query_one("#progress_bar", ProgressBar)
         eta_display = self.query_one("#eta_display", Static)
-        
+
+        status_text = "\nNo song playing"
         if self.playlist.player.is_playing:
-            name = self.playlist.player.current_song.name if self.playlist.player.current_song else "Unknown"
-            song_status.update(f"\nPlaying: {name}")
+            name = (
+                MusicEFXData.format_song_name(self.playlist.player.current_song)
+                if self.playlist.player.current_song
+                else "Unknown"
+            )
+            status_text = f"\nPlaying: {name}"
         elif self.playlist.player.is_paused:
-            name = self.playlist.player.current_song.name if self.playlist.player.current_song else "Unknown"
-            song_status.update(f"\nPaused: {name}")
+            name = (
+                MusicEFXData.format_song_name(self.playlist.player.current_song)
+                if self.playlist.player.current_song
+                else "Unknown"
+            )
+            status_text = f"\nPaused: {name}"
         else:
-            song_status.update("\nNo song playing")
             # If a song finished playing naturally, auto-advance
-            if self.playlist.player.current_song and not self.playlist.player.active and not self.playlist.player.is_paused and not self._manually_stopped:
+            if (
+                self.playlist.player.current_song
+                and not self.playlist.player.active
+                and not self.playlist.player.is_paused
+                and not self._manually_stopped
+            ):
                 self.playlist.next_song()
                 self._manually_stopped = False
+
+        # Append next song display
+        next_song = self.playlist.get_next_song()
+        if next_song:
+            next_name = MusicEFXData.format_song_name(next_song)
+            status_text += f" => Next: {next_name}"
+
+        song_status.update(status_text)
 
         # Update Progress Bar and ETA
         if self.playlist.player.active or self.playlist.player.is_paused:
@@ -135,6 +161,9 @@ class MusicEFX(App):
         for btn in self.query(".btn").results(Button):
             if btn.id == "prev_button":
                 btn.disabled = not has_playlist or len(self.playlist.played_items) <= 1
+            elif btn.id == "reroll_button":
+                btn.disabled = not has_playlist
+                btn.display = self.playlist.random_mode
             else:
                 btn.disabled = not has_playlist
 
@@ -160,19 +189,32 @@ class MusicEFX(App):
             self._manually_stopped = False
         elif event.button.id == "random_button":
             self.playlist.random_mode = not self.playlist.random_mode
-            event.button.classes = "btn pressed" if self.playlist.random_mode else "btn"
-            
+            self.playlist.upcoming_index = None
+            event.button.variant = "primary" if self.playlist.random_mode else "default"
+        elif event.button.id == "reroll_button":
+            self.playlist.reroll_next_song()
+
         self._update_ui()
 
     def on_key(self, event) -> None:
         """Handle key presses for controlling playback."""
         if event.key == "space":
-            self.on_button_pressed(Button.Pressed(self.query_one("#play_pause_button", Button)))
+            self.on_button_pressed(
+                Button.Pressed(self.query_one("#play_pause_button", Button))
+            )
         elif event.key == "s":
-            self.on_button_pressed(Button.Pressed(self.query_one("#stop_button", Button)))
+            self.on_button_pressed(
+                Button.Pressed(self.query_one("#stop_button", Button))
+            )
         elif event.key == "p":
-            self.on_button_pressed(Button.Pressed(self.query_one("#prev_button", Button)))
+            self.on_button_pressed(
+                Button.Pressed(self.query_one("#prev_button", Button))
+            )
         elif event.key == "n":
-            self.on_button_pressed(Button.Pressed(self.query_one("#next_button", Button)))
+            self.on_button_pressed(
+                Button.Pressed(self.query_one("#next_button", Button))
+            )
         elif event.key == "r":
-            self.on_button_pressed(Button.Pressed(self.query_one("#random_button", Button)))
+            self.on_button_pressed(
+                Button.Pressed(self.query_one("#random_button", Button))
+            )

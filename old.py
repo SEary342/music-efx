@@ -38,7 +38,7 @@ class MusicEFX(App):
 
     def __init__(self, root_folder: Path, **kwargs):
         super().__init__(**kwargs)
-        self.title = f"MusicEFX {importlib.metadata.version("music-efx")}"
+        self.title = f"MusicEFX {importlib.metadata.version('music-efx')}"
         self.root_folder = root_folder
         self.current_playlist = []
         self.current_index = 0
@@ -194,7 +194,7 @@ class MusicEFX(App):
                         self.current_playlist
                     )
             else:
-                self.current_index = hist_list[idx_in_hist+1]
+                self.current_index = hist_list[idx_in_hist + 1]
             self.reset_progress_bar()
             self.play_song()
 
