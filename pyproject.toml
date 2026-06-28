@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "music-efx"
 version = "0.1.0"
@@ -12,5 +16,78 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pyinstaller>=6.16",
+    "pytest>=8.4",
     "ruff>=0.15.20",
+    "taskipy>=1.14",
 ]
+
+[project.scripts]
+music-efx = "src.main:main"
+
+###############################################################################
+# Ruff
+###############################################################################
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+###############################################################################
+# Pytest
+###############################################################################
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+]
+
+###############################################################################
+# Taskipy
+###############################################################################
+
+[tool.taskipy.tasks]
+test = "pytest"
+
+lint = "ruff check ."
+
+fix = "ruff check . --fix"
+
+format = "ruff format ."
+
+check = """
+ruff check .
+ruff format . --check
+"""
+
+build = "pyinstaller src/music_efx/__main__.py --name music-efx --collect-all cffi --collect-all just_playback"
+
+all = "task check && task build"
+
+clean = """
+python -c "import pathlib, shutil; \
+[shutil.rmtree(p, ignore_errors=True) for p in ['build','dist','.pytest_cache','.ruff_cache']]; \
+[pathlib.Path(f).unlink(missing_ok=True) for f in pathlib.Path('.').glob('*.spec')]"
+"""
+
+###############################################################################
+# PyInstaller
+###############################################################################
+
+[tool.pyinstaller]
+name = "music-efx"

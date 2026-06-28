@@ -1,6 +1,6 @@
 import random
 from pathlib import Path
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 from just_playback import Playback
 
@@ -13,7 +13,7 @@ class RandomMode(TypedDict):
 class Player:
     def __init__(self):
         self._playback = Playback()
-        self.current_song: Optional[Path] = None
+        self.current_song: Path | None = None
 
     def play_song(self):
         if self._playback.active and self._playback.paused:
@@ -57,8 +57,8 @@ class Player:
 class Playlist:
     def __init__(
         self,
-        playlist_file: Optional[Path] = None,
-        random_init: Optional[RandomMode] = None,
+        playlist_file: Path | None = None,
+        random_init: RandomMode | None = None,
     ):
         self.playlist: list[Path] = []
         self.current_index = 0
@@ -66,14 +66,12 @@ class Playlist:
         self.played_items: list[int] = []  # History of played indices
         self.random_mode: bool = False
         self.playlist_file = playlist_file
-        self.upcoming_index: Optional[int] = None
+        self.upcoming_index: int | None = None
 
         if playlist_file:
             self.load_playlist(playlist_file)
         elif random_init:
-            self._load_from_directory(
-                random_init["directory"], random_init["include_nested"]
-            )
+            self._load_from_directory(random_init["directory"], random_init["include_nested"])
             self.random_mode = True
 
     def load_playlist(self, path: Path):
@@ -83,14 +81,10 @@ class Playlist:
         self.current_index = 0
 
         if path.exists() and path.is_file():
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 for line in f:
                     p = Path(line.strip())
-                    if (
-                        p.exists()
-                        and p.is_file()
-                        and p.suffix.lower() in [".mp3", ".wav", ".ogg"]
-                    ):
+                    if p.exists() and p.is_file() and p.suffix.lower() in [".mp3", ".wav", ".ogg"]:
                         self.playlist.append(p)
 
     def _load_from_directory(self, directory: Path, include_nested: bool):
@@ -121,11 +115,7 @@ class Playlist:
         self._play_current()
 
     def _play_current(self):
-        if (
-            not self.playlist
-            or self.current_index < 0
-            or self.current_index >= len(self.playlist)
-        ):
+        if not self.playlist or self.current_index < 0 or self.current_index >= len(self.playlist):
             return
 
         song = self.playlist[self.current_index]
@@ -151,9 +141,7 @@ class Playlist:
 
         # Otherwise, pick next song
         if self.random_mode:
-            unplayed = [
-                i for i in range(len(self.playlist)) if i not in self.played_items
-            ]
+            unplayed = [i for i in range(len(self.playlist)) if i not in self.played_items]
             if unplayed:
                 self.upcoming_index = random.choice(unplayed)
             else:
@@ -161,14 +149,12 @@ class Playlist:
         else:
             self.upcoming_index = (self.current_index + 1) % len(self.playlist)
 
-    def get_next_song(self) -> Optional[Path]:
+    def get_next_song(self) -> Path | None:
         if not self.playlist:
             return None
         if self.upcoming_index is None:
             self._generate_upcoming()
-        if self.upcoming_index is not None and 0 <= self.upcoming_index < len(
-            self.playlist
-        ):
+        if self.upcoming_index is not None and 0 <= self.upcoming_index < len(self.playlist):
             return self.playlist[self.upcoming_index]
         return None
 

@@ -9,3 +9,5 @@ wheels/
 # Virtual environments
 .venv
 *.spec
+.DS_Store
+*.wav

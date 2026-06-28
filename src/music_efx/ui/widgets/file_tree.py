@@ -1,6 +1,7 @@
-from textual.widgets.tree import TreeNode
 from textual.widgets import Tree
-from src.data import MusicEFXData
+from textual.widgets.tree import TreeNode
+
+from music_efx.data import MusicEFXData
 
 
 class FileSystemTree(Tree):
@@ -9,7 +10,7 @@ class FileSystemTree(Tree):
     def __init__(self, data_provider: MusicEFXData, *args, **kwargs):
         # Initialize the base Tree with the root label and data
         root_label, root_path = data_provider.get_root()
-        super().__init__(data=root_path, *args, **kwargs)
+        super().__init__(*args, data=root_path, **kwargs)
 
         self.data_provider = data_provider
 

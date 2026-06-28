@@ -5,8 +5,8 @@ from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, Footer, Header, ProgressBar, Static, Tree
 
-from src.data import MusicEFXData
-from src.player import Playlist
+from music_efx.data import MusicEFXData
+from music_efx.player import Playlist
 
 from .widgets import FileSystemTree
 
@@ -44,18 +44,14 @@ class MusicEFX(App):
         """Compose the layout of the application."""
         data_provider = MusicEFXData(self.root_folder)
         yield Header()
-        yield FileSystemTree(
-            label="Music Folders", data_provider=data_provider, id="folder_tree"
-        )
+        yield FileSystemTree(label="Music Folders", data_provider=data_provider, id="folder_tree")
         with Vertical(id="info"):
             yield Static("\nNo song playing", id="song_status")
             with Horizontal():
                 yield ProgressBar(total=100, id="progress_bar", show_eta=False)
                 yield Static("", id="eta_display")
         with Horizontal(id="controls"):
-            yield Button(
-                "Play/Pause", id="play_pause_button", disabled=True, classes="btn"
-            )
+            yield Button("Play/Pause", id="play_pause_button", disabled=True, classes="btn")
             yield Button("Stop", id="stop_button", disabled=True, classes="btn")
             yield Button("Previous", id="prev_button", disabled=True, classes="btn")
             yield Button("Next", id="next_button", disabled=True, classes="btn")
@@ -199,22 +195,12 @@ class MusicEFX(App):
     def on_key(self, event) -> None:
         """Handle key presses for controlling playback."""
         if event.key == "space":
-            self.on_button_pressed(
-                Button.Pressed(self.query_one("#play_pause_button", Button))
-            )
+            self.on_button_pressed(Button.Pressed(self.query_one("#play_pause_button", Button)))
         elif event.key == "s":
-            self.on_button_pressed(
-                Button.Pressed(self.query_one("#stop_button", Button))
-            )
+            self.on_button_pressed(Button.Pressed(self.query_one("#stop_button", Button)))
         elif event.key == "p":
-            self.on_button_pressed(
-                Button.Pressed(self.query_one("#prev_button", Button))
-            )
+            self.on_button_pressed(Button.Pressed(self.query_one("#prev_button", Button)))
         elif event.key == "n":
-            self.on_button_pressed(
-                Button.Pressed(self.query_one("#next_button", Button))
-            )
+            self.on_button_pressed(Button.Pressed(self.query_one("#next_button", Button)))
         elif event.key == "r":
-            self.on_button_pressed(
-                Button.Pressed(self.query_one("#random_button", Button))
-            )
+            self.on_button_pressed(Button.Pressed(self.query_one("#random_button", Button)))
