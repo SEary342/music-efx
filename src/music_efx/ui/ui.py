@@ -5,7 +5,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, Footer, Header, ProgressBar, Static, Tree
 
-from music_efx.data import MusicEFXData
+from music_efx.data import AUDIO_FORMATS, MusicEFXData
 from music_efx.player import Playlist
 
 from .widgets import FileSystemTree
@@ -39,12 +39,14 @@ class MusicEFX(App):
         self.playlist = Playlist()
         self._poll_timer = None
         self._manually_stopped = False
+        self.data_provider = MusicEFXData(self.root_folder)
 
     def compose(self) -> ComposeResult:
         """Compose the layout of the application."""
-        data_provider = MusicEFXData(self.root_folder)
         yield Header()
-        yield FileSystemTree(label="Music Folders", data_provider=data_provider, id="folder_tree")
+        yield FileSystemTree(
+            label="Music Folders", data_provider=self.data_provider, id="folder_tree"
+        )
         with Vertical(id="info"):
             yield Static("\nNo song playing", id="song_status")
             with Horizontal():
@@ -70,22 +72,14 @@ class MusicEFX(App):
 
         selected_path = Path(event.node.data)
 
-        if selected_path.is_dir():
-            tracks = [
-                f
-                for f in sorted(selected_path.glob("*"))
-                if f.is_file() and f.suffix.lower() in [".mp3", ".wav", ".ogg"]
-            ]
+        if self.data_provider.is_directory(selected_path):
+            tracks = self.data_provider.build_playlist_from_folder(selected_path)
             if tracks:
                 self.playlist.set_playlist(tracks)
                 self.playlist.player.stop()
                 self._manually_stopped = True
-        elif selected_path.suffix.lower() in [".mp3", ".wav", ".ogg"]:
-            tracks = [
-                f
-                for f in sorted(selected_path.parent.glob("*"))
-                if f.is_file() and f.suffix.lower() in [".mp3", ".wav", ".ogg"]
-            ]
+        elif selected_path.suffix.lower() in AUDIO_FORMATS:
+            tracks = self.data_provider.build_playlist_from_folder(selected_path.parent)
             self.playlist.set_playlist(tracks)
             try:
                 idx = tracks.index(selected_path)

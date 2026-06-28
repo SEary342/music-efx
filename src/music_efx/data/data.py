@@ -58,3 +58,23 @@ class MusicEFXData:
 
         for item in items:
             yield item
+
+    def list_audio_files_in_folder(self, folder: Path) -> list[Path]:
+        """Return sorted audio files in a folder."""
+        if not folder.is_dir():
+            return []
+
+        return sorted(
+            [
+                item
+                for item in folder.iterdir()
+                if item.is_file() and item.suffix.lower() in AUDIO_FORMATS
+            ],
+            key=lambda p: p.name.lower(),
+        )
+
+    def build_playlist_from_folder(self, folder: Path) -> list[Path]:
+        return self.list_audio_files_in_folder(folder)
+
+    def is_directory(self, path: Path) -> bool:
+        return path.is_dir()

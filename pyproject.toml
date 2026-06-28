@@ -18,6 +18,7 @@ dependencies = [
 dev = [
     "pyinstaller>=6.16",
     "pytest>=8.4",
+    "pytest-cov>=7.1.0",
     "ruff>=0.15.20",
     "taskipy>=1.14",
 ]
@@ -52,10 +53,19 @@ indent-style = "space"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+python_files = ["test_*.py"]
 addopts = [
     "-ra",
     "--strict-markers",
 ]
+
+[tool.coverage.run]
+source = ["music_efx"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
 
 ###############################################################################
 # Taskipy
@@ -63,6 +73,8 @@ addopts = [
 
 [tool.taskipy.tasks]
 test = "pytest"
+cov = "pytest --cov=music_efx --cov-report=term-missing"
+cov-html = "pytest --cov=music_efx --cov-report=html"
 
 lint = "ruff check ."
 
@@ -71,8 +83,9 @@ fix = "ruff check . --fix"
 format = "ruff format ."
 
 check = """
-ruff check .
-ruff format . --check
+task lint
+task format
+task cov
 """
 
 build = "pyinstaller src/music_efx/__main__.py --name music-efx --collect-all cffi --collect-all just_playback"

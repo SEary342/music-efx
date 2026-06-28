@@ -11,3 +11,4 @@ wheels/
 *.spec
 .DS_Store
 *.wav
+.coverage
