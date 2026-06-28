@@ -1,10 +1,10 @@
 [project]
 name = "music-efx"
-version = "0.0.4"
+version = "0.1.0"
 description = "A TUI MP3 Player"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "pygame>=2.6.1",
-    "textual>=1.0.0",
+    "just-playback>=0.1.8",
+    "textual>=8.2.7",
 ]
