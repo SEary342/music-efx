@@ -1,6 +1,8 @@
-from typing import Iterator
+import re
 from pathlib import Path
+from typing import Iterator
 
+from tinytag import TinyTag
 
 AUDIO_FORMATS = {".mp3", ".wav", ".ogg"}
 
@@ -26,8 +28,28 @@ class MusicEFXData:
         if not folder.is_dir():
             return
 
-        for item in sorted(folder.iterdir()):
+        items = []
+        for item in folder.iterdir():
             if item.is_dir():
-                yield item.name, str(item), True
+                items.append((item.name, str(item), True))
             elif item.suffix.lower() in AUDIO_FORMATS:
-                yield item.name, str(item), False
+                original_label = item.stem
+
+                label = re.sub(r"^[^a-zA-Z]+", "", original_label)
+                if not label:
+                    label = original_label
+
+                try:
+                    tag = TinyTag.get(str(item))
+                    if tag.duration:
+                        minutes, seconds = divmod(int(tag.duration), 60)
+                        label = f"{label} [{minutes}:{seconds:02}]"
+                except Exception:
+                    pass
+                items.append((label, str(item), False))
+
+        # Sort alphabetically (case-insensitive), keeping directories at the top
+        items.sort(key=lambda x: (not x[2], x[0].lower()))
+
+        for item in items:
+            yield item

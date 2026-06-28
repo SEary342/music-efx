@@ -7,4 +7,5 @@ requires-python = ">=3.13"
 dependencies = [
     "just-playback>=0.1.8",
     "textual>=8.2.7",
+    "tinytag>=2.2.1",
 ]
