@@ -88,7 +88,11 @@ task format
 task cov
 """
 
-build = "pyinstaller src/music_efx/__main__.py --name music-efx --collect-all cffi --collect-all just_playback"
+build = "pyinstaller src/music_efx/__main__.py --name music-efx --onefile --collect-all cffi --collect-all just_playback"
+
+mac-app = "./scripts/build_mac.sh"
+mac-install = "./scripts/build_mac.sh --install"
+mac-deploy = "task build && task mac-install"
 
 all = "task check && task build"
 
