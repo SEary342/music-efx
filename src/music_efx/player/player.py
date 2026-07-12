@@ -64,6 +64,7 @@ class Playlist:
         self.current_index = 0
         self.player = Player()
         self.played_items: list[int] = []  # History of played indices
+        self.skipped_items: list[int] = []  # Indices skipped by reroll, reset on song change
         self.random_mode: bool = False
         self.playlist_file = playlist_file
         self.upcoming_index: int | None = None
@@ -126,6 +127,7 @@ class Playlist:
             self.played_items.append(self.current_index)
 
         self.upcoming_index = None
+        self.skipped_items = []
 
     def _generate_upcoming(self):
         if not self.playlist:
@@ -141,10 +143,15 @@ class Playlist:
 
         # Otherwise, pick next song
         if self.random_mode:
-            unplayed = [i for i in range(len(self.playlist)) if i not in self.played_items]
-            if unplayed:
-                self.upcoming_index = random.choice(unplayed)
+            excluded = set(self.played_items) | set(self.skipped_items)
+            candidates = [i for i in range(len(self.playlist)) if i not in excluded]
+            if not candidates:
+                # Everything has been played or skipped; fall back to excluding only skipped
+                candidates = [i for i in range(len(self.playlist)) if i not in self.skipped_items]
+            if candidates:
+                self.upcoming_index = random.choice(candidates)
             else:
+                # All songs skipped (tiny playlist) — allow anything
                 self.upcoming_index = random.randint(0, len(self.playlist) - 1)
         else:
             self.upcoming_index = (self.current_index + 1) % len(self.playlist)
@@ -160,6 +167,8 @@ class Playlist:
 
     def reroll_next_song(self):
         if self.random_mode:
+            if self.upcoming_index is not None:
+                self.skipped_items.append(self.upcoming_index)
             self.upcoming_index = None
             self._generate_upcoming()
 
